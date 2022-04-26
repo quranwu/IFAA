@@ -254,3 +254,8 @@ All covariates used in the analysis can be extracted using the object `covariate
 results$covariatesData[1:10,]
 ```
 
+Session Info
+```{r,eval=T}
+sessionInfo()
+```
+

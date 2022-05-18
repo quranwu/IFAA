@@ -29,17 +29,16 @@ runGlmnet=function(
     cvResul=cv.glmnet(x=x,y=as.vector(y),nlambda=nLam,nfolds=nfolds,
                       family=family,intercept=intercept,standardize=FALSE)
 
-    lamOpi=as.numeric(cvResul$lambda.min)
+    lamOpi_loc=which(cvResul$lambda==cvResul$lambda.min)
+
+    finalLassoRunBeta<-as.vector(cvResul$glmnet.fit$beta[,lamOpi_loc])
 
     rm(cvResul)
 
-  finalLassoRun=glmnet(x=x,y=as.vector(y),lambda=lamOpi,family=family,
-                       intercept=intercept,standardize=FALSE)
+
   rm(x,y)
 
   # convert to regular matrix format
-  finalLassoRunBeta=as.vector(finalLassoRun$beta)
-
   # convert back to the full beta if there near constant x columns
   if(length(xWithNearZeroSd)>0){
     betaTrans=groupBetaToFullBeta(nTaxa=nBeta,nPredics=1,
@@ -51,8 +50,6 @@ runGlmnet=function(
     } else {
      beta=finalLassoRunBeta
      }
-  rm(finalLassoRun)
-
   results$betaNoInt=beta[-seq(1,length(beta),by=(nPredics+1))]
   rm(beta)
   return(results)

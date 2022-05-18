@@ -98,9 +98,16 @@ metaData=function(MicrobData,CovData,linkIDname,testCov=NULL,ctrlCov=NULL,
   Covariates=CovarWithId[,!colnames(CovarWithId)%in%linkIDname,drop=FALSE]
   rm(CovarWithId1)
 
+
   if(!is.numeric(Covariates[,testCov,drop=FALSE])){
-    stop("There are non-numeric variables in the covariates for association test.")
+    warning("There are non-numeric variables in the test covariates")
+    nTestCov=length(testCov)
+    numCheck=unlist(lapply(seq(nTestCov),function(i)is.numeric(Covariates[,testCov[i]])))+0
+    for(i in which(numCheck==0)){
+      Covariates[,testCov[i]]=as.numeric(factor(Covariates[,testCov[i]]))
+    }
   }
+
 
   MdataWithId=allRawData[,(colnames(allRawData)%in%colnames(MdataWithId))]
   Mdata_raw=MdataWithId[,!(colnames(MdataWithId)%in%linkIDname),drop=FALSE]
@@ -184,8 +191,22 @@ metaData=function(MicrobData,CovData,linkIDname,testCov=NULL,ctrlCov=NULL,
   results$binaryInd=binaryInd
   results$xNames=colnames(Covariates)
   if (standardize) {
-    Covariates[,-binaryInd]<-Covariates[,-binaryInd] %*%
-      diag(1/apply(Covariates[,-binaryInd],2,function(x) sd(x,na.rm = TRUE)))
+    if (length(binaryInd)>0) {
+      Covariates[,-binaryInd]<-Covariates[,-binaryInd] %*%
+        diag(1/apply(Covariates[,-binaryInd],2,function(x) sd(x,na.rm = TRUE)))
+    } else {
+      Covariates<-Covariates %*%
+        diag(1/apply(Covariates,2,function(x) sd(x,na.rm = TRUE)))
+    }
+
+  }
+
+  #### Test for constant column
+  sd_col<-apply(Covariates,2,function(x) sd(x,na.rm = TRUE))
+  sd_zero_loc<-which(sd_col==0)
+  if (length(sd_zero_loc)>0) {
+    Covariates[,sd_zero_loc]<-0
+    warning(paste0("Covariate ",colnames(Covariates)[sd_zero_loc]," is constant, please double check"))
   }
 
   xNewNames=paste0("x",seq(length(xNames)))

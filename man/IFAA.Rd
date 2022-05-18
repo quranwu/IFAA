@@ -5,9 +5,7 @@
 \title{Robust association identification and inference for absolute abundance in microbiome analyses}
 \usage{
 IFAA(
-  MicrobData,
-  CovData,
-  linkIDname,
+  experiment_dat,
   testCov = NULL,
   ctrlCov = NULL,
   testMany = TRUE,
@@ -30,18 +28,9 @@ IFAA(
 )
 }
 \arguments{
-\item{MicrobData}{Microbiome data matrix containing microbiome absolute abundance or relative abundance with each row per
-sample and each column per taxon/OTU/ASV (or any other unit). It should contain an id variable to be linked with
-the id variable in the covariates data: \code{CovData}. This argument can take
-directory path. For example, \code{MicrobData="C://...//microbiomeData.tsv"}.}
-
-\item{CovData}{Covariates data matrix containing covariates and confounders with each row
-per sample and each column per variable. Any categorical variable should be converted into dummy variables in this data matrix unless it can be treated as a continuous variable.
-It should also contain an id variable to
-be linked with the id variable in the microbiome data: \code{MicrobData}. This argument can take
-directory path. For example, \code{CovData = "C://...//covariatesData.tsv"}.}
-
-\item{linkIDname}{The common variable name of the id variable in both \code{MicrobData} and \code{CovData}. The two data sets will be merged by this id variable.}
+\item{experiment_dat}{A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
+sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
+per sample and each column per variable. Note that the variables in colData has to be numeric or binary.}
 
 \item{testCov}{Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is \code{NULL} which means all covariates are \code{testCov}.}
 
@@ -117,6 +106,7 @@ The IFAA method can successfully addressed this challenge. The \code{IFAA()} wil
 regularization.
 }
 \examples{
+library(SummarizedExperiment)
 data(dataM)
 dim(dataM)
 dataM[1:5, 1:8]
@@ -124,9 +114,8 @@ data(dataC)
 dim(dataC)
 dataC[1:5, ]
 \donttest{
-results <- IFAA(MicrobData = dataM,
-                CovData = dataC,
-                linkIDname = "id",
+test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+results <- IFAA(experiment_dat = test_dat,
                 testCov = c("v1", "v2"),
                 ctrlCov = c("v3"),
                 fdrRate = 0.15)

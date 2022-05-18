@@ -15,18 +15,10 @@
 ##'
 ##' High-dimensional \mjeqn{X_i}{} is handled by regularization.
 ##'
-##' @param MicrobData Microbiome data matrix containing microbiome absolute abundance or relative abundance with each row
-##' per sample and each column per taxon/OTU/ASV (or any other unit). It should contain an id variable to
-##' be linked with the id variable in the covariates data: `CovData`. This argument can
-##' take directory path. For example, `MicrobData="C://...//microbiomeData.tsv"`.
-##' @param CovData Covariates data matrix containing covariates and confounders with each row
-##' per sample and each column per variable. Any categorical variable should be converted into dummy variables in this data matrix unless it can be treated as a continuous variable.
-##' It should also contain an id variable to
-##' be linked with the id variable in the microbiome data: `MicrobData`. This argument can
-##' take directory path. For example, `CovData="C://...//covariatesData.tsv"`.
 ##'
-##'
-##' @param linkIDname The common variable name of the id variable in both `MicrobData` and `CovData`. The two data sets will be merged by this id variable.
+##' @param experiment_dat A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
+##' sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
+##' per sample and each column per variable. Note that the variables in colData has to be numeric or binary.
 ##' @param targetTaxa The numerator taxa names specified by users for the targeted ratios. Default is NULL in which case all taxa are numerator taxa (except the taxa in the argument 'refTaxa').
 ##' @param refTaxa Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names.
 ##' @param allCov All covariates of interest (including confounders) for estimating and testing their associations with the targeted ratios. Default is 'NULL' meaning that all covariates in covData are of interest.
@@ -45,6 +37,7 @@
 ##' - `covariatesData`: A dataset containing all covariates used in the analyses.
 ##'
 ##' @examples
+##' library(SummarizedExperiment)
 ##' data(dataM)
 ##' dim(dataM)
 ##' dataM[1:5, 1:8]
@@ -52,9 +45,8 @@
 ##' dim(dataC)
 ##' dataC[1:5, ]
 ##' \donttest{
-##' results <- MZILN(MicrobData = dataM,
-##'                 CovData = dataC,
-##'                 linkIDname = "id",
+##' test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+##' results <- MZILN(experiment_dat = test_dat,
 ##'                 targetTaxa = "rawCount6",
 ##'                 refTaxa=c("rawCount11"),
 ##'                 allCov=c("v1","v2","v3"),
@@ -74,9 +66,7 @@
 
 
 MZILN=function(
-  MicrobData,
-  CovData,
-  linkIDname,
+  experiment_dat,
   targetTaxa=NULL,
   refTaxa,
   allCov=NULL,
@@ -94,6 +84,13 @@ MZILN=function(
   results=list()
 
   start.time = proc.time()[3]
+
+  MicrobData<-data.frame(t(assays(experiment_dat)$counts))
+  MicrobData$id<-rownames(MicrobData)
+  CovData<-data.frame(colData(experiment_dat))
+  CovData$id<-rownames(CovData)
+  linkIDname<-"id"
+
   runMeta=metaData(MicrobData=MicrobData,CovData=CovData,
                    linkIDname=linkIDname,testCov=allCov,
                    taxDropThresh=taxDropThresh,standardize=standardize)

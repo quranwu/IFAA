@@ -15,50 +15,41 @@ Use sample datasets to run `IFAA()` function.
 ```r
 # Detailed instructions on the package are provided in the manual and vignette
 library(IFAA)
- 
+library(SummarizedExperiment)
+
 data(dataM)
+dim(dataM)
+dataM[1:5, 1:8]
+
 data(dataC)
- 
-results <- IFAA(MicrobData = dataM,
-                CovData = dataC,
-                linkIDname = "id",
-                testCov = c("v1", "v2"),
-                ctrlCov = c("v3"),
-                nRef = 3,
-                paraJobs = 2,
-                fdrRate = 0.25)
+dim(dataC)
+dataC[1:3, ]
+
+test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+
+results <- IFAA(experiment_dat = test_dat,
+                testCov = c("v1"),
+                ctrlCov = c("v2","v3"),
+                fdrRate = 0.15)
+
 ```
 
 
 Once the analysis is done, you can extract the regression coefficients along with 95% confidence intervals using this command:
 ```r
-results$analysisResults$sig_list_each_mean
+results$analysisResults$sig_results
 ```
 
-The function can also take csv or tsv data files directly by reading the file directory paths using the first two arguments:
-```r
-M="pathToTheCsvFile/microbiomeData.csv" 
-# or 
-M="pathToTheTsvFile/microbiomeData.tsv"
-
-C="pathToTheCsvFile/covariatesData.csv" 
-# or 
-C="pathToTheTsvFile/covariatesData.tsv"
-
-results=IFAA(MicrobData=M,CovData=C,...)
-```
 
 
 Use sample datasets to run `MZILN()` function.
 ```r
-results <- MZILN(MicrobData = dataM,
-                CovData = dataC,
-                 linkIDname = "id",
-                 allCov=c("v1","v2","v3"),
-                 targetTaxa = "rawCount6",
+results <- MZILN(experiment_dat=test_dat,
+                 targetTaxa = "rawCount18",
                  refTaxa=c("rawCount11"),
-                 paraJobs=2)
-```
+                 allCov=c("v1","v2","v3"),
+                 fdrRate=0.15)
+                 ```
 Regression results including confidence intervals can be extracted in the following way:
 ```r
 results$analysisResults$targettaxa_result_list

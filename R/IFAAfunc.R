@@ -23,16 +23,9 @@
 ##' \mjeqn{\beta^k}{} and their 95% confidence intervals. High-dimensional \mjeqn{X_i}{} is handled by
 ##' regularization.
 ##'
-##' @param MicrobData Microbiome data matrix containing microbiome absolute abundance or relative abundance with each row per
-##' sample and each column per taxon/OTU/ASV (or any other unit). It should contain an id variable to be linked with
-##' the id variable in the covariates data: `CovData`. This argument can take
-##' directory path. For example, `MicrobData="C://...//microbiomeData.tsv"`.
-##' @param CovData Covariates data matrix containing covariates and confounders with each row
-##' per sample and each column per variable. Any categorical variable should be converted into dummy variables in this data matrix unless it can be treated as a continuous variable.
-##' It should also contain an id variable to
-##' be linked with the id variable in the microbiome data: `MicrobData`. This argument can take
-##' directory path. For example, `CovData = "C://...//covariatesData.tsv"`.
-##' @param linkIDname The common variable name of the id variable in both `MicrobData` and `CovData`. The two data sets will be merged by this id variable.
+##' @param experiment_dat A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
+##' sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
+##' per sample and each column per variable. Note that the variables in colData has to be numeric or binary.
 ##' @param testCov Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is `NULL` which means all covariates are `testCov`.
 ##' @param ctrlCov Potential confounders that will be adjusted in the model. It corresponds to $W_i$ in the equation. Default is `NULL` which means all covariates except those in `testCov` are adjusted as confounders.
 ##' @param testMany This takes logical value `TRUE` or `FALSE`. If `TRUE`, the `testCov` will contain all the variables in `CovData` provided `testCov` is set to be `NULL`. The default value is `TRUE` which does not do anything if `testCov` is not `NULL`.
@@ -60,6 +53,7 @@
 ##' - `covariatesData`: A dataset containing covariates and confounders used in the analyses.
 ##'
 ##' @examples
+##' library(SummarizedExperiment)
 ##' data(dataM)
 ##' dim(dataM)
 ##' dataM[1:5, 1:8]
@@ -67,9 +61,8 @@
 ##' dim(dataC)
 ##' dataC[1:5, ]
 ##' \donttest{
-##' results <- IFAA(MicrobData = dataM,
-##'                 CovData = dataC,
-##'                 linkIDname = "id",
+##' test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+##' results <- IFAA(experiment_dat = test_dat,
 ##'                 testCov = c("v1", "v2"),
 ##'                 ctrlCov = c("v3"),
 ##'                 fdrRate = 0.15)
@@ -92,6 +85,7 @@
 ##' @import glmnet
 ##' @import stats
 ##' @import utils
+##' @importFrom SummarizedExperiment assays colData
 ##' @export
 ##' @md
 
@@ -99,9 +93,7 @@
 
 
 IFAA=function(
-  MicrobData,
-  CovData,
-  linkIDname,
+  experiment_dat,
   testCov=NULL,
   ctrlCov=NULL,
   testMany=TRUE,
@@ -126,6 +118,12 @@ IFAA=function(
 
   results=list()
   start.time = proc.time()[3]
+  MicrobData<-data.frame(t(assays(experiment_dat)$counts))
+  MicrobData$id<-rownames(MicrobData)
+  CovData<-data.frame(colData(experiment_dat))
+  CovData$id<-rownames(CovData)
+  linkIDname<-"id"
+
   runMeta=metaData(MicrobData=MicrobData,CovData=CovData,
                    linkIDname=linkIDname,testCov=testCov,
                    ctrlCov=ctrlCov,testMany=testMany,

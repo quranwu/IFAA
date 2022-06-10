@@ -3,7 +3,7 @@
 ##' For estimating and testing the associations of abundance ratios with covariates.
 ##' \loadmathjax
 ##'
-##' Most of the time, users just need to feed the first six inputs to the function: `MicrobData`, `CovData`,  `linkIDname`, `targetTaxa`, `refTaxa` and `allCov`. All other inputs can just take their default values.
+##' Most of the time, users just need to feed the first six inputs to the function: `MicrobData`, `CovData`,  `linkIDname`, `refTaxa` and `allCov`. All other inputs can just take their default values.
 ##' The regression model for `MZILN()` can be expressed as follows:
 ##' \mjdeqn{\log\bigg(\frac{\mathcal{Y}_i^k}{\mathcal{Y}_i^{K+1}}\bigg)|\mathcal{Y}_i^k>0,\mathcal{Y}_i^{K+1}>0=\alpha^{0k}+\mathcal{X}_i^T\alpha^k+\epsilon_i^k,\hspace{0.2cm}k=1,...,K}{}
 ##' where
@@ -19,7 +19,6 @@
 ##' @param experiment_dat A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
 ##' sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
 ##' per sample and each column per variable. Note that the variables in colData has to be numeric or binary.
-##' @param targetTaxa The numerator taxa names specified by users for the targeted ratios. Default is NULL in which case all taxa are numerator taxa (except the taxa in the argument 'refTaxa').
 ##' @param refTaxa Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names.
 ##' @param allCov All covariates of interest (including confounders) for estimating and testing their associations with the targeted ratios. Default is 'NULL' meaning that all covariates in covData are of interest.
 ##' @param adjust_method The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.
@@ -30,11 +29,12 @@
 ##' @param standardize This takes a logical value `TRUE` or `FALSE`. If `TRUE`, the design matrix for X will be standardized in the analyses and the results. Default is `FALSE`.
 ##' @param sequentialRun This takes a logical value `TRUE` or `FALSE`. Default is `TRUE`. It can be set to be "FALSE" to increase speed if there are multiple taxa in the argument 'refTaxa'.
 ##' @param seed Random seed for reproducibility. Default is `1`. It can be set to be NULL to remove seeding.
-##' @return A list containing the estimation results.
+##' @return An SummarizedExperiment object with assay and metadata.
 ##'
-##'##' - `targettaxa_result_list`: A list containing estimating results for the targeted ratios. Only available when targetTaxa is non-empty.
-##' - `sig_results`: A list containing estimating results for all significant ratios
-##' - `covariatesData`: A dataset containing all covariates used in the analyses.
+##' - `assay`: The assay contains a dataset with each row representing each taxon, columns as "ref_tax", "taxon", "cov", "estimate",
+##' "SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the reference taxon used, taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
+##'
+##' - `metadata`: The metadata contains a list showing total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 ##'
 ##' @examples
 ##' library(SummarizedExperiment)
@@ -47,11 +47,15 @@
 ##' \donttest{
 ##' test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
 ##' results <- MZILN(experiment_dat = test_dat,
-##'                 targetTaxa = "rawCount6",
 ##'                 refTaxa=c("rawCount11"),
 ##'                 allCov=c("v1","v2","v3"),
 ##'                 fdrRate=0.15)
-##'
+##' ## to extract full results:
+##' summary_res<-assay(results)
+##' ## to extract significant results:
+##' summary_res[summary_res$sig_ind==1,,drop=FALSE]
+##' ## to extract metadata
+##' metadata(results)
 ##' }
 ##'
 ##'
@@ -67,7 +71,6 @@
 
 MZILN=function(
   experiment_dat,
-  targetTaxa=NULL,
   refTaxa,
   allCov=NULL,
   adjust_method="BY",
@@ -114,13 +117,7 @@ MZILN=function(
   nRef=length(refTaxa)
   refTaxa_newNam=newMicrobNames[microbName%in%refTaxa]
 
-  if ((length(targetTaxa)>0)) {
-    if (sum(targetTaxa%in%microbName)!=length(targetTaxa)) {
-      stop("Error: One or more of the target taxa have no sequencing reads or are not in the data set.
-      Double check the names of the target taxa and their
-           sparsity levels.")
-    }
-  }
+
 
   if(length(refTaxa)>0){
     if(sum(refTaxa%in%microbName)!=length(refTaxa)){
@@ -136,7 +133,6 @@ MZILN=function(
                                           binaryInd=binaryInd,
                                           binaryInd_test=binaryInd_test,
                                           covsPrefix=covsPrefix,Mprefix=Mprefix,
-                                          targetTaxa=targetTaxa,
                                           refTaxa=refTaxa_newNam,adjust_method=adjust_method,
                                           paraJobs=paraJobs,fdrRate=fdrRate,
                                           bootB=bootB,
@@ -145,27 +141,20 @@ MZILN=function(
   )
   rm(data)
 
-  results$sig_results<-results$analysisResults$sig_results
-  results$targettaxa_result_list<-results$analysisResults$targettaxa_result_list
-  results$testCov=testCovInOrder
-  results$ctrlCov=ctrlCov
-  results$microbName=microbName
-  results$bootB=bootB
-  results$paraJobs=paraJobs
-  results$nRef=nRef
 
-  if(length(seed)==1){
-    results$seed=seed
-  }else{
-    results$seed="No seed used."
-  }
+
 
   rm(testCovInOrder,ctrlCov,microbName)
 
   totalTimeMins = (proc.time()[3] - start.time)/60
   message("The entire analysis took ",round(totalTimeMins,2), " minutes")
 
-  results$totalTimeMins=totalTimeMins
 
-  return(results)
+  output_se_obj<-SummarizedExperiment(assays  = results$analysisResults$full_results,
+                                      metadata = list(totalTimeMins=totalTimeMins,
+                                                      seed=seed,
+                                                      fdrRate=fdrRate,
+                                                      adjust_method=adjust_method))
+
+  return(output_se_obj)
 }

@@ -71,11 +71,11 @@ per sample and each column per variable. Note that the variables in colData has 
 \item{seed}{Random seed for reproducibility. Default is \code{1}. It can be set to be NULL to remove seeding.}
 }
 \value{
-A list containing the estimation results.
+An SummarizedExperiment object with assay and metadata.
 \itemize{
-\item \code{sig_results}: A list containing estimating results that are statistically significant.
-\item \code{full_results}: A list containing all estimating results. NA denotes unestimable.
-\item \code{covariatesData}: A dataset containing covariates and confounders used in the analyses.
+\item \code{assay}: The assay is a dataset for mean results from two reference taxon with each row representing each taxon, columns as "taxon", "cov", "estimate",
+"SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95\% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
+\item \code{metadata}: The metadata is a list. \code{full_result_sep} contains estimates for each reference taxon separately, \code{final_ref_taxon} shows the final 2 reference taxon used for analysis, \code{ref_taxon_count} and \code{ref_taxon_est} shows how the final reference taxon were selected, and the other elements show the total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 }
 }
 \description{
@@ -120,6 +120,14 @@ results <- IFAA(experiment_dat = test_dat,
                 ctrlCov = c("v3"),
                 fdrRate = 0.15)
 
+## to extract full results:
+summary_res<-assay(results)
+## to extract significant results:
+summary_res[summary_res$sig_ind==1,,drop=FALSE]
+## to extract metadata
+meta_dat<-metadata(results)
+## to extract separate estimates
+meta_dat$full_result_sep
 }
 
 

@@ -6,7 +6,6 @@
 \usage{
 MZILN(
   experiment_dat,
-  targetTaxa = NULL,
   refTaxa,
   allCov = NULL,
   adjust_method = "BY",
@@ -23,8 +22,6 @@ MZILN(
 \item{experiment_dat}{A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
 sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
 per sample and each column per variable. Note that the variables in colData has to be numeric or binary.}
-
-\item{targetTaxa}{The numerator taxa names specified by users for the targeted ratios. Default is NULL in which case all taxa are numerator taxa (except the taxa in the argument 'refTaxa').}
 
 \item{refTaxa}{Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names.}
 
@@ -47,12 +44,11 @@ per sample and each column per variable. Note that the variables in colData has 
 \item{seed}{Random seed for reproducibility. Default is \code{1}. It can be set to be NULL to remove seeding.}
 }
 \value{
-A list containing the estimation results.
-
-##' - \code{targettaxa_result_list}: A list containing estimating results for the targeted ratios. Only available when targetTaxa is non-empty.
+An SummarizedExperiment object with assay and metadata.
 \itemize{
-\item \code{sig_results}: A list containing estimating results for all significant ratios
-\item \code{covariatesData}: A dataset containing all covariates used in the analyses.
+\item \code{assay}: The assay contains a dataset with each row representing each taxon, columns as "ref_tax", "taxon", "cov", "estimate",
+"SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the reference taxon used, taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95\% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
+\item \code{metadata}: The metadata contains a list showing total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 }
 }
 \description{
@@ -60,7 +56,7 @@ For estimating and testing the associations of abundance ratios with covariates.
 \loadmathjax
 }
 \details{
-Most of the time, users just need to feed the first six inputs to the function: \code{MicrobData}, \code{CovData},  \code{linkIDname}, \code{targetTaxa}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
+Most of the time, users just need to feed the first six inputs to the function: \code{MicrobData}, \code{CovData},  \code{linkIDname}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
 The regression model for \code{MZILN()} can be expressed as follows:
 \mjdeqn{\log\bigg(\frac{\mathcal{Y}_i^k}{\mathcal{Y}_i^{K+1}}\bigg)|\mathcal{Y}_i^k>0,\mathcal{Y}_i^{K+1}>0=\alpha^{0k}+\mathcal{X}_i^T\alpha^k+\epsilon_i^k,\hspace{0.2cm}k=1,...,K}{}
 where
@@ -85,11 +81,15 @@ dataC[1:5, ]
 \donttest{
 test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
 results <- MZILN(experiment_dat = test_dat,
-                targetTaxa = "rawCount6",
                 refTaxa=c("rawCount11"),
                 allCov=c("v1","v2","v3"),
                 fdrRate=0.15)
-
+## to extract full results:
+summary_res<-assay(results)
+## to extract significant results:
+summary_res[summary_res$sig_ind==1,,drop=FALSE]
+## to extract metadata
+metadata(results)
 }
 
 

@@ -5,7 +5,6 @@ Regulariz_MZILN=function(
   testCovInOrder,
   testCovInNewNam,
   microbName,
-  targetTaxa,
   refTaxa,
   adjust_method,
   paraJobs,
@@ -112,37 +111,34 @@ Regulariz_MZILN=function(
   all_cov_list<-list()
 
   for (i in 1:length(fin_ref_taxon_name)) {
-    all_cov_list[[fin_ref_taxon_name[i]]]<-results$estiList[[i]]$all_cov_list
     all_cov_sig_list[[fin_ref_taxon_name[i]]]<-results$estiList[[i]]$sig_list_each
-  }
+    save_list_temp<-results$estiList[[i]]$all_cov_list
+    rearrage_res_list<-list()
+    for (j in testCovInOrder) {
+      est_res_save_all<-cbind(save_list_temp$est_save_mat[j,],save_list_temp$se_mat[j,],
+                              save_list_temp$CI_low_mat[j,],
+                              save_list_temp$CI_up_mat[j,],save_list_temp$p_value_save_mat[j,])
+      est_res_save_all<-data.frame(fin_ref_taxon_name[i],rownames(est_res_save_all),j,est_res_save_all)
 
-  tgtaxa_save_list<-list()
-
-  if (length(targetTaxa)!=0) {
-    for (i in 1:length(fin_ref_taxon_name)) {
-      col_to_keep<-colnames(all_cov_list[[fin_ref_taxon_name[i]]]$est_save_mat) %in% targetTaxa
-      est_to_keep<-all_cov_list[[fin_ref_taxon_name[i]]]$est_save_mat[,col_to_keep,drop=FALSE]
-      se_to_keep<-all_cov_list[[fin_ref_taxon_name[i]]]$se_mat[,col_to_keep,drop=FALSE]
-      CI_low_to_keep<-all_cov_list[[fin_ref_taxon_name[i]]]$CI_low_mat[,col_to_keep,drop=FALSE]
-      CI_up_to_keep<-all_cov_list[[fin_ref_taxon_name[i]]]$CI_up_mat[,col_to_keep,drop=FALSE]
-      p_value_to_keep<-all_cov_list[[fin_ref_taxon_name[i]]]$p_value_save_mat[,col_to_keep,drop=FALSE]
-      ref_each_save_list<-list()
-      for (j in 1:nrow(est_to_keep)) {
-        res_show_mat<-cbind(est_to_keep[j,],se_to_keep[j,],CI_low_to_keep[j,],CI_up_to_keep[j,],p_value_to_keep[j,])
-        colnames(res_show_mat)<-c("estimate","SE est","CI low","CI up","adj p-value")
-        rownames(res_show_mat)<-targetTaxa
-        ref_each_save_list[[rownames(est_to_keep)[j]]]<-res_show_mat
-      }
-      tgtaxa_save_list[[fin_ref_taxon_name[i]]]<-ref_each_save_list
-
+      colnames(est_res_save_all)<-c("ref_tax","taxon","cov","estimate","SE est","CI low","CI up","adj p-value")
+      rearrage_res_list[[j]]<-est_res_save_all
     }
+
+    unorder_long<-do.call("rbind",rearrage_res_list)
+    all_cov_list[[fin_ref_taxon_name[i]]]<-
+      data.frame(unorder_long[gtools::mixedorder(
+        unorder_long[,c("taxon")],decreasing = FALSE),],row.names = NULL)
   }
+
+  all_cov_list<-do.call("rbind",all_cov_list)
+  rownames(all_cov_list)<-NULL
+  all_cov_list$sig_ind<-all_cov_list$adj.p.value<fdrRate
+
+
 
 
 
   results$full_results<-all_cov_list
-  results$sig_results<-all_cov_sig_list
-  results$targettaxa_result_list=tgtaxa_save_list
   results$nSub=nSub
   results$nTaxa=nTaxa
   results$nPredics=nPredics

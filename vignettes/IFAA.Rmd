@@ -85,15 +85,14 @@ sample and each row per taxon/OTU/ASV (or any other unit). The colData contains 
 
 ## Output for IFAA() function
 
-The estimation results are saved in the following lists: 
+The estimation results are saved as an SummarizedExperiment object with assay and metadata: 
 
-- `sig_results`: A list containing estimating results that are statistically significant. 
+ - `assay`: The assay is a dataset for mean results from two reference taxon with each row representing each taxon, columns as "taxon", "cov", "estimate",
+ "SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
 
-- `full_results`: A list containing all estimating results. NA denotes unestimable.
+ - `metadata`: The metadata is a list. `full_result_sep` contains estimates for each reference taxon separately, `final_ref_taxon` shows the final 2 reference taxon used for analysis, `ref_taxon_count` and `ref_taxon_est` shows how the final reference taxon were selected, and the other elements show the total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 
-The covariates data used in the analyses including `testCov` and `ctrlCov` is saved in the following object:
 
-- `covariatesData`: A dataset containing covariates and confounders used in the analyses
 
 
 ## Examples
@@ -131,7 +130,8 @@ results <- IFAA(experiment_dat = test_dat,
 
 In this example, we are only interested in testing the associations with `"v1"` which is why `testCov=c("v1")`. The variables `"v2" and "v3"` are adjusted as potential confounders in the analyses. The final analysis results are saved in the list `sig_results`: 
 ```{r,eval=T}
-results$sig_results
+summary_res<-assay(results)
+summary_res[summary_res$sig_ind==1,,drop=FALSE]
 ```
 The results found three taxa `"rawCount18"`, `"rawCount36"`, `"rawCount41"` associated with `"v1"` while adjusting for `"v2" and "v3"`. The regression coefficients and their 95% confidence intervals are provided. These coefficients correspond to $\beta^k$ in the model equation. 
 
@@ -140,11 +140,6 @@ The interpretation is that
 - Every unit increase in `"v1"` is associated with approximately 2.5% increase in the absolute abundance of `"rawCount18"`, approximately 2.6% increase in the absolute abundance of `"rawCount36"`, and approximately 3.0% increase in the absolute abundance of `"rawCount41"` in the entire gut ecosystem. 
 
 
-All the analyzed covariates including `testCov` and `ctrlCov` can be extracted using the object `covariatesData`. The covariates data of the first 10 subjects can extracted as follows:
-
-```{r,eval=T}
-results$covariatesData[1:10,]
-```
 ## MZILN() function
 The IFAA package can also implement the Multivariate Zero-Inflated Logistic Normal (MZILN) regression model for estimating and testing the association of abundance ratios with covariates. The `MZILN()` function estimates and tests the associations of  user-specified abundance ratios with covariates. When the denominator taxon of the ratio is independent of the covariates, 'MZILN()' should generate similar results as 'IFAA()'. The regression model of 'MZILN()' can be expressed as follows: 
 $$
@@ -181,15 +176,12 @@ sample and each row per taxon/OTU/ASV (or any other unit). The colData contains 
 
 ## Output for MZILN() function
 
-The estimation results are saved in the following lists: 
+An SummarizedExperiment object with assay and metadata:
 
-- `targettaxa_result_list`: A list containing estimating results for targeted ratios. Only available when targetTaxa is non-empty.
-- `sig_results`: A list containing estimating results for all significant ratios
+ - `assay`: The assay contains a dataset with each row representing each taxon, columns as "ref_tax", "taxon", "cov", "estimate",
+ "SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the reference taxon used, taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
+ - `metadata`: The metadata contains a list showing total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 
-
-All covariates data used in the analysis is saved in the following object:
-
-- `covariatesData`: A dataset containing all covariates used in the analyses
 
 
 ## Examples
@@ -217,16 +209,15 @@ Next we analyze the data to test the associations between the ratio "rawCount18/
 
 ```{r, eval=T}
 results <- MZILN(experiment_dat=test_dat,
-                 targetTaxa = "rawCount18",
                  refTaxa=c("rawCount11"),
                  allCov=c("v1","v2","v3"),
                  fdrRate=0.15)
 ```
 
 The final analysis results are saved in the list
-`targettaxa_result_list`: 
 ```{r,eval=T}
-results$targettaxa_result_list
+summary_res<-assay(results)
+summary_res[summary_res$taxon=="rawCount18",,drop=FALSE]
 ```
 The regression coefficients and their 95% confidence intervals are provided. These coefficients correspond to $\alpha^k$ in the model equation, and can be interpreted as the associations between the covariates and log-ratio of `"rawCount18"` over '"rawCount11"'. 
 
@@ -237,18 +228,12 @@ The interpretation for the results is that
 
 We can also extract all the ratios (with `"rawCount11"` being the denominator taxon) that are  significantly associated with any of the covariates as follows:
 ```{r,eval=T}
-results$sig_results
+summary_res[summary_res$sig_ind==1,,drop=FALSE]
 ```
 The interpretation for the results is that 
 
 - Every unit increase in `"v1"` is associated with approximately 2.3% increase in the abundance ratio of `"rawCount18"` over `"rawCount11"` (while controlling for `"v2"` and `"v3"`), and it is statistically significant; Every unit increase in `"v1"` is also  associated with approximately 3.0% increase in the abundance ratio of `"rawCount36"` over `"rawCount11"` (while controlling for `"v2"` and `"v3"`), and it is statistically significant; Every unit increase in `"v1"` is also associated with approximately 2.6% decrease in the abundance ratio of `"rawCount41"` over `"rawCount11"` (while controlling for `"v2"` and `"v3"`), and it is statistically significant.
 
-
-All covariates used in the analysis can be extracted using the object `covariatesData`. The covariates data of the first 10 subjects are extracted as follows: 
-
-```{r,eval=T}
-results$covariatesData[1:10,]
-```
 
 Session Info
 ```{r,eval=T}

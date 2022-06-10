@@ -216,15 +216,39 @@ Regulariz=function(
 
   ### calculate mean ###
   fin_ref_taxon_name<-names(results$estiList)
-  all_cov_sig_list<-list()
+  all_cov_list_sep<-list()
+
+
+  for (i in 1:length(fin_ref_taxon_name)) {
+    save_list_temp<-results$estiList[[i]]$all_cov_list
+    rearrage_res_list<-list()
+    for (j in testCovInOrder) {
+      est_res_save_all<-cbind(save_list_temp$est_save_mat[j,],save_list_temp$se_mat[j,],
+                              save_list_temp$CI_low_mat[j,],
+                              save_list_temp$CI_up_mat[j,],save_list_temp$p_value_save_mat[j,])
+      est_res_save_all<-data.frame(fin_ref_taxon_name[i],rownames(est_res_save_all),j,est_res_save_all)
+
+      colnames(est_res_save_all)<-c("ref_tax","taxon","cov","estimate","SE est","CI low","CI up","adj p-value")
+      rearrage_res_list[[j]]<-est_res_save_all
+    }
+
+    unorder_long<-do.call("rbind",rearrage_res_list)
+    all_cov_list_sep[[fin_ref_taxon_name[i]]]<-
+      data.frame(unorder_long[gtools::mixedorder(
+        unorder_long[,c("taxon")],decreasing = FALSE),],row.names = NULL)
+  }
+
+  all_cov_list_sep<-do.call("rbind",all_cov_list_sep)
+  rownames(all_cov_list_sep)<-NULL
+  all_cov_list_sep$sig_ind<-all_cov_list_sep$adj.p.value<fwerRate
+  results$all_cov_list_sep<-all_cov_list_sep
+  ##### Mean ####
   all_cov_list<-list()
 
   for (i in 1:length(fin_ref_taxon_name)) {
     all_cov_list[[fin_ref_taxon_name[i]]]<-results$estiList[[i]]$all_cov_list
-    all_cov_sig_list[[fin_ref_taxon_name[i]]]<-results$estiList[[i]]$sig_list_each
   }
   results$all_cov_list<-all_cov_list
-  results$all_cov_sig_list<-all_cov_sig_list
 
 
   ref_taxon_name<-names(all_cov_list)
@@ -244,42 +268,46 @@ Regulariz=function(
   colname_use<-colnames(est_save_mat_mean)
 
   sig_ind<-which(p_value_adj_mean<=fwerRate,arr.ind = TRUE,useNames = FALSE)
-  est_sig<-est_save_mat_mean[sig_ind]
-  CI_low_sig<-CI_low_mat_mean[sig_ind]
-  CI_up_sig<-CI_up_mat_mean[sig_ind]
-  p_adj_sig<-p_value_adj_mean[sig_ind]
-  se_sig<-se_mat_mean[sig_ind]
+  # est_sig<-est_save_mat_mean[sig_ind]
+  # CI_low_sig<-CI_low_mat_mean[sig_ind]
+  # CI_up_sig<-CI_up_mat_mean[sig_ind]
+  # p_adj_sig<-p_value_adj_mean[sig_ind]
+  # se_sig<-se_mat_mean[sig_ind]
 
-  cov_sig_index<-sort(unique(sig_ind[,1]))
-  sig_list_each_mean<-list()
-  if (length(cov_sig_index)>0) {
-    for (iii in 1:length(cov_sig_index)) {
-      sig_loc<-which(sig_ind[,1]==cov_sig_index[iii])
-      est_spe_cov<-est_sig[sig_loc]
-      CI_low_spe_cov<-CI_low_sig[sig_loc]
-      CI_up_spe_cov<-CI_up_sig[sig_loc]
-      p_adj_spe_cov<-p_adj_sig[sig_loc]
-      se_spe_cov<-se_sig[sig_loc]
-      cov_sig_mat<-matrix(nrow=length(sig_loc),ncol = 5)
-      colnames(cov_sig_mat)<-c("estimate","SE est","CI low","CI up","adj p-value")
-      cov_sig_mat[,1]<-est_spe_cov
-      cov_sig_mat[,2]<-se_spe_cov
-      cov_sig_mat[,3]<-CI_low_spe_cov
-      cov_sig_mat[,4]<-CI_up_spe_cov
-      cov_sig_mat[,5]<-p_adj_spe_cov
-      rownames(cov_sig_mat)<-colname_use[sig_ind[sig_loc,2]]
-      sig_list_each_mean[[testCovInOrder[cov_sig_index[iii]]]]<-cov_sig_mat
-    }
-  }
+  # cov_sig_index<-sort(unique(sig_ind[,1]))
+  # sig_list_each_mean<-list()
+  # if (length(cov_sig_index)>0) {
+  #   for (iii in 1:length(cov_sig_index)) {
+  #     sig_loc<-which(sig_ind[,1]==cov_sig_index[iii])
+  #     est_spe_cov<-est_sig[sig_loc]
+  #     CI_low_spe_cov<-CI_low_sig[sig_loc]
+  #     CI_up_spe_cov<-CI_up_sig[sig_loc]
+  #     p_adj_spe_cov<-p_adj_sig[sig_loc]
+  #     se_spe_cov<-se_sig[sig_loc]
+  #     cov_sig_mat<-matrix(nrow=length(sig_loc),ncol = 5)
+  #     colnames(cov_sig_mat)<-c("estimate","SE est","CI low","CI up","adj p-value")
+  #     cov_sig_mat[,1]<-est_spe_cov
+  #     cov_sig_mat[,2]<-se_spe_cov
+  #     cov_sig_mat[,3]<-CI_low_spe_cov
+  #     cov_sig_mat[,4]<-CI_up_spe_cov
+  #     cov_sig_mat[,5]<-p_adj_spe_cov
+  #     rownames(cov_sig_mat)<-colname_use[sig_ind[sig_loc,2]]
+  #     sig_list_each_mean[[testCovInOrder[cov_sig_index[iii]]]]<-cov_sig_mat
+  #   }
+  # }
 
-  results$sig_results<-sig_list_each_mean
+  # results$sig_results<-sig_list_each_mean
   full_results<-list()
   for (j in testCovInOrder) {
-    est_res_save_all<-cbind(est_save_mat_mean[j,],se_mat_mean[j,],CI_low_mat_mean[j,],
-                            CI_up_mat_mean[j,],p_value_adj_mean[j,])
-    colnames(est_res_save_all)<-c("estimate","SE est","CI low","CI up","adj p-value")
-    full_results[[j]]<-est_res_save_all
+    est_res_save_all<-data.frame(colname_use,j,est_save_mat_mean[j,],se_mat_mean[j,],CI_low_mat_mean[j,],
+                            CI_up_mat_mean[j,],p_value_adj_mean[j,],row.names = NULL)
+    colnames(est_res_save_all)<-c("taxon","cov","estimate","SE est","CI low","CI up","adj p-value")
+    full_results[[j]]<-data.frame(est_res_save_all)
   }
+  full_results<-do.call("rbind",full_results)
+  rownames(full_results)<-NULL
+  full_results<-full_results[gtools::mixedorder(full_results$taxon,decreasing = FALSE),]
+  full_results$sig_ind<-full_results$adj.p.value<fwerRate
   results$full_results<-full_results
 
   results$nTaxa=nTaxa

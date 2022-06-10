@@ -45,12 +45,12 @@
 ##' @param SDquantilThresh The threshold of the quantile of standard deviation of sequencing reads, above which could be selected as reference taxon. The default is `0`.
 ##' @param balanceCut The threshold of the proportion of non-zero sequencing reads in each group of a binary variable for choosing the final reference taxa in phase 2. The default number is `0.2` which means at least 20% non-zero sequencing reads in each group are needed to be eligible for being chosen as a final reference taxon.
 ##' @param seed Random seed for reproducibility. Default is `1`. It can be set to be NULL to remove seeding.
-##' @return A list containing the estimation results.
+##' @return An SummarizedExperiment object with assay and metadata.
 ##'
-##' - `sig_results`: A list containing estimating results that are statistically significant.
-##' - `full_results`: A list containing all estimating results. NA denotes unestimable.
+##' - `assay`: The assay is a dataset for mean results from two reference taxon with each row representing each taxon, columns as "taxon", "cov", "estimate",
+##' "SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
 ##'
-##' - `covariatesData`: A dataset containing covariates and confounders used in the analyses.
+##' - `metadata`: The metadata is a list. `full_result_sep` contains estimates for each reference taxon separately, `final_ref_taxon` shows the final 2 reference taxon used for analysis, `ref_taxon_count` and `ref_taxon_est` shows how the final reference taxon were selected, and the other elements show the total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
 ##'
 ##' @examples
 ##' library(SummarizedExperiment)
@@ -67,6 +67,14 @@
 ##'                 ctrlCov = c("v3"),
 ##'                 fdrRate = 0.15)
 ##'
+##' ## to extract full results:
+##' summary_res<-assay(results)
+##' ## to extract significant results:
+##' summary_res[summary_res$sig_ind==1,,drop=FALSE]
+##' ## to extract metadata
+##' meta_dat<-metadata(results)
+##' ## to extract separate estimates
+##' meta_dat$full_result_sep
 ##'}
 ##'
 ##'
@@ -85,7 +93,8 @@
 ##' @import glmnet
 ##' @import stats
 ##' @import utils
-##' @importFrom SummarizedExperiment assays colData
+##' @importFrom SummarizedExperiment assays colData SummarizedExperiment
+##' @importFrom gtools mixedorder
 ##' @export
 ##' @md
 
@@ -191,19 +200,12 @@ IFAA=function(
   )
   rm(data)
 
-  results$sig_results<-results$analysisResults$sig_results
-  results$full_results<-results$analysisResults$full_results
 
-  results$testCov=testCovInOrder
-  results$ctrlCov=ctrlCov
-  results$microbName=microbName
-  results$bootB=bootB
-  results$refReadsThresh=refReadsThresh
-  results$balanceCut=balanceCut
-  results$SDThresh=SDThresh
-  results$paraJobs=paraJobs
-  results$SDquantilThresh=SDquantilThresh
-  results$nRef=nRef
+
+
+
+  totalTimeMins = (proc.time()[3] - start.time)/60
+  message("The entire analysis took ",round(totalTimeMins,2), " minutes")
 
   if(length(seed)==1){
     results$seed=seed
@@ -211,14 +213,19 @@ IFAA=function(
     results$seed="No seed used."
   }
 
-  rm(testCovInOrder,ctrlCov,microbName)
+  output_se_obj<-SummarizedExperiment(assays  = list(results$analysisResults$full_results),
+                                      metadata = list(full_result_sep=results$analysisResults$all_cov_list_sep,
+                                                      final_ref_taxon=results$analysisResults$finalizedBootRefTaxon,
+                                                      ref_taxon_count=results$analysisResults$goodIndpRefTaxWithCount,
+                                                      ref_taxon_est=results$analysisResults$goodIndpRefTaxWithEst,
+                                                      totalTimeMins=totalTimeMins,
+                                                      seed=seed,
+                                                      fdrRate=fdrRate,
+                                                      adjust_method=adjust_method))
 
-  totalTimeMins = (proc.time()[3] - start.time)/60
-  message("The entire analysis took ",round(totalTimeMins,2), " minutes")
 
-  results$totalTimeMins=totalTimeMins
 
-  return(results)
+  return(output_se_obj)
 }
 
 

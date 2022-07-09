@@ -3,12 +3,12 @@
 \docType{data}
 \name{dataM}
 \alias{dataM}
-\title{Sample microbiome data}
+\title{Sample microbiome data. Dataset came from subset of blinded real data.}
 \format{
 A data frame with 40 rows and 60 variables:
 }
 \usage{
-dataM
+data(dataM)
 }
 \description{
 A dataset contains 60 taxa with absolute abundances and these are gut microbiome.

@@ -9,6 +9,13 @@ IFAA is a novel approach to make inference on the association of covariates with
 # install from GitHub:
 devtools::install_github("gitlzg/IFAA")
 ```
+
+```r
+# install from Bioconductor:
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("IFAA")
+```r
 ## Usage
 
 Use sample datasets to run `IFAA()` function.
@@ -25,19 +32,31 @@ data(dataC)
 dim(dataC)
 dataC[1:3, ]
 
-test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+## Merge microbiome data and covariate data by id, to avoid unmatching observations.
+data_merged<-merge(dataM,dataC,by="id",all=FALSE)
+
+## Seperate microbiome data and covariate data, drop id variable from microbiome data
+dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)%in%c("id")]]
+dataC_sub<-data_merged[,colnames(dataC)]
+
+## Create SummarizedExperiment object
+test_dat<-SummarizedExperiment(assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
+
+## If you already have a SummarizedExperiment format data, you can
+## ignore the above steps.
+
 
 results <- IFAA(experiment_dat = test_dat,
                 testCov = c("v1"),
                 ctrlCov = c("v2","v3"),
-                fdrRate = 0.15)
+                fdrRate = 0.05)
 
 ```
 
 
 Once the analysis is done, you can extract the regression coefficients along with 95% confidence intervals using this command:
 ```r
-results$analysisResults$sig_results
+summary_res<-results$full_results
 ```
 
 
@@ -52,7 +71,7 @@ results <- MZILN(experiment_dat=test_dat,
                  ```
 Regression results including confidence intervals can be extracted in the following way:
 ```r
-results$analysisResults$targettaxa_result_list
+results$full_results
 ```
 
 ## References 

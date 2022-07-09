@@ -8,6 +8,7 @@ MZILN(
   experiment_dat,
   refTaxa,
   allCov = NULL,
+  sampleIDname = NULL,
   adjust_method = "BY",
   fdrRate = 0.15,
   paraJobs = NULL,
@@ -15,17 +16,20 @@ MZILN(
   taxDropThresh = 0,
   standardize = FALSE,
   sequentialRun = TRUE,
+  verbose = TRUE,
   seed = 1
 )
 }
 \arguments{
-\item{experiment_dat}{A SummarizedExperiment object containing countData and colData. The countData contains microbiome absolute abundance or relative abundance with each column per
-sample and each row per taxon/OTU/ASV (or any other unit). The colData contains covariates and confounders with each row
-per sample and each column per variable. Note that the variables in colData has to be numeric or binary.}
+\item{experiment_dat}{A SummarizedExperiment object containing microbiome data and covarites (see example on how to create a SummarizedExperiment object). The microbiome data can be
+absolute abundance or relative abundance with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points.
+The covarites data contains covariates and confounders with each row per sample and each column per variable. The covarites data has to be numeric or binary.}
 
 \item{refTaxa}{Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names.}
 
 \item{allCov}{All covariates of interest (including confounders) for estimating and testing their associations with the targeted ratios. Default is 'NULL' meaning that all covariates in covData are of interest.}
+
+\item{sampleIDname}{Name of the sample ID variable in the data. In the case that the data does not have an ID variable, this can be ignored. Default is NULL.}
 
 \item{adjust_method}{The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.}
 
@@ -41,14 +45,15 @@ per sample and each column per variable. Note that the variables in colData has 
 
 \item{sequentialRun}{This takes a logical value \code{TRUE} or \code{FALSE}. Default is \code{TRUE}. It can be set to be "FALSE" to increase speed if there are multiple taxa in the argument 'refTaxa'.}
 
+\item{verbose}{Whether the process message is printed out to the console. The default is TRUE.}
+
 \item{seed}{Random seed for reproducibility. Default is \code{1}. It can be set to be NULL to remove seeding.}
 }
 \value{
-An SummarizedExperiment object with assay and metadata.
+A list with two elements.
 \itemize{
-\item \code{assay}: The assay contains a dataset with each row representing each taxon, columns as "ref_tax", "taxon", "cov", "estimate",
-"SE.est", "CI.low", "CI.up", "adj.p.value", and "sig_ind", describing the reference taxon used, taxon name, covariate name, parameter estimates, standard error estimates, lower bound and upper bound of the 95\% confidence interval, adjusted p value, and the indicator showing whether the effect of corresponding taxon is significant, respectively.
-\item \code{metadata}: The metadata contains a list showing total time used in minutes, random seed used, the p-value cutoff used, and p-value adjustment method used.
+\item \code{full_results}: The main results for MZILN containing the estimation and testing results for all associations between all taxa ratios with refTaxan being the denominator and all covariates in \code{allCov}. It is a dataframe with each row representing an association, and ten columns named as "ref_tax", "taxon", "cov", "estimate", "SE.est", "CI.low", "CI.up", "adj.p.value", "unadj.p.value", and "sig_ind". The columns correspond to the denominator taxon, numerator taxon, covariate name, association estimates, standard error estimates, lower bound and upper bound of the 95\% confidence interval, adjusted p value, and the indicator showing whether the association is significant after multiple testing adjustment.
+\item \code{metadata}: The metadata is a list containing total time used in minutes, random seed used, FDR rate, and multiple testing adjustment method used.
 }
 }
 \description{
@@ -56,7 +61,7 @@ For estimating and testing the associations of abundance ratios with covariates.
 \loadmathjax
 }
 \details{
-Most of the time, users just need to feed the first six inputs to the function: \code{MicrobData}, \code{CovData},  \code{linkIDname}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
+Most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
 The regression model for \code{MZILN()} can be expressed as follows:
 \mjdeqn{\log\bigg(\frac{\mathcal{Y}_i^k}{\mathcal{Y}_i^{K+1}}\bigg)|\mathcal{Y}_i^k>0,\mathcal{Y}_i^{K+1}>0=\alpha^{0k}+\mathcal{X}_i^T\alpha^k+\epsilon_i^k,\hspace{0.2cm}k=1,...,K}{}
 where
@@ -72,33 +77,51 @@ High-dimensional \mjeqn{X_i}{} is handled by regularization.
 }
 \examples{
 library(SummarizedExperiment)
+
+## If you already have a SummarizedExperiment format data, you can ignore 
+## the data processing steps below.
+
+## load the example microbiome data. This could be relative abundance or absolute 
+## abundance data. If you have a csv or tsv file for the microbiome data, you 
+## can use read.csv() function or read.table() function in R to read the 
+## data file into R.
 data(dataM)
 dim(dataM)
 dataM[1:5, 1:8]
+
+## load the example covariates data. If you have a csv or tsv file for the 
+## covariates data, you can use read.csv() function or read.table() function 
+## in R to read the data file into R.
 data(dataC)
 dim(dataC)
 dataC[1:5, ]
-\donttest{
-test_dat<-SummarizedExperiment(assays=list(counts=dataM), colData=dataC)
+
+## Merge microbiome data and covariate data by id, to avoid unmatching observations. 
+data_merged<-merge(dataM,dataC,by="id",all=FALSE)
+
+## Seperate microbiome data and covariate data, drop id variable from the microbiome data
+dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)\%in\%c("id")]]
+dataC_sub<-data_merged[,colnames(dataC)]
+
+## Create SummarizedExperiment object 
+test_dat<-SummarizedExperiment(assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
+
+## If you already have a SummarizedExperiment format data, you can 
+## ignore the above steps.
+
+## Run MZILN function
 results <- MZILN(experiment_dat = test_dat,
                 refTaxa=c("rawCount11"),
                 allCov=c("v1","v2","v3"),
-                fdrRate=0.15)
-## to extract full results:
-summary_res<-assay(results)
-## to extract significant results:
-summary_res[summary_res$sig_ind==1,,drop=FALSE]
-## to extract metadata
-metadata(results)
-}
-
-
-
+                sampleIDname=c("id"),
+                fdrRate=0.05)
+## to extract the results for all ratios with rawCount11 as the denominator:
+summary_res<-results$full_results
+## to extract results for the ratio of a specific taxon (e.g., rawCount45) over rawCount11:
+target_ratio=summary_res[summary_res$taxon=="rawCount45",]
+## to extract all of the ratios having significant associations:
+sig_ratios=subset(summary_res,sig_ind==TRUE)
 }
 \references{
 Li et al.(2018) Conditional Regression Based on a Multivariate Zero-Inflated Logistic-Normal Model for Microbiome Relative Abundance Data. Statistics in Biosciences 10(3): 587-608
-
-Zhang CH (2010) Nearly unbiased variable selection under minimax concave penalty. Annals of Statistics. 38(2):894-942.
-
-Liu et al.(2020) A bootstrap lasso + partial ridge method to construct confidence intervals for parameters in high-dimensional sparse linear models. Statistica Sinica
 }

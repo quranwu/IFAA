@@ -3,12 +3,12 @@
 \docType{data}
 \name{dataC}
 \alias{dataC}
-\title{Sample covariates data}
+\title{Sample covariates data. Dataset came from subset of blinded real data.}
 \format{
 A data frame with 40 rows and 3 variables:
 }
 \usage{
-dataC
+data(dataC)
 }
 \description{
 A dataset ontains 3 covariates.

@@ -51,7 +51,6 @@ Regulariz <- function(data,
   
   results$goodRefTaxaCandi <- data.info$goodRefTaxaCandi
   
-  
   num_taxon_phase1 <- max(length(refTaxa), phase1_taxon_num)
   num_taxon_phase1 <- min(num_taxon_phase1, nTaxa)
   phase1_taxon_sample_pool <-
@@ -86,7 +85,6 @@ Regulariz <- function(data,
   data_sub_phase1 <- data[, c(phase1_taxon_sample, predNames)]
   
   rm(data.info)
-
 
   regul.start.time <- proc.time()[3]
   message("Start Phase 1 analysis")

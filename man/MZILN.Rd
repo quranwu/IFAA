@@ -10,12 +10,12 @@ MZILN(
   allCov = NULL,
   sampleIDname = NULL,
   adjust_method = "BY",
-  fdrRate = 0.15,
+  fdrRate = 0.05,
   paraJobs = NULL,
   bootB = 500,
   taxDropThresh = 0,
   standardize = FALSE,
-  sequentialRun = TRUE,
+  sequentialRun = FALSE,
   verbose = TRUE
 )
 }
@@ -32,7 +32,7 @@ The covariates data contains covariates and confounders with each row per sample
 
 \item{adjust_method}{The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.}
 
-\item{fdrRate}{The false discovery rate for identifying taxa/OTU/ASV associated with \code{allCov}. Default is \code{0.15}.}
+\item{fdrRate}{The false discovery rate for identifying taxa/OTU/ASV associated with \code{allCov}. Default is \code{0.05}.}
 
 \item{paraJobs}{If \code{sequentialRun} is \code{FALSE}, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as \code{NULL}, it will automatically detect the cores to decide the number of parallel jobs. Default is \code{NULL}.}
 
@@ -54,10 +54,9 @@ A list with two elements.
 }
 }
 \description{
-For estimating and testing the associations of abundance ratios with covariates.
+The MZILN function is for estimating and testing the associations of abundance ratios with covariates.
 \loadmathjax
 
-Most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
 The regression model for \code{MZILN()} can be expressed as follows:
 \mjdeqn{\log\bigg(\frac{\mathcal{Y}_i^k}{\mathcal{Y}_i^{K+1}}\bigg)|\mathcal{Y}_i^k>0,\mathcal{Y}_i^{K+1}>0=\alpha^{0k}+\mathcal{X}_i^T\alpha^k+\epsilon_i^k,\hspace{0.2cm}k=1,...,K}{}
 where
@@ -70,21 +69,24 @@ ecosystem.
 }
 
 High-dimensional \mjeqn{X_i}{} is handled by regularization.
+
+When using this function, most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{refTaxa} and \code{allCov}. All other inputs can just take their default values.
 }
 \examples{
 
 library(IFAA)
-## A Makeup example from Scratch. 60 taxon, 40 subjects, 3 covariates
-
-## If you already have a SummarizedExperiment format data, you can
-## ignore the following steps and directly feed it to the MZILN function.
+## A makeup example data from Scratch. 60 taxon, 40 subjects, 3 covariates
 
 set.seed(1)
+
+## create an ID variable for the example data
+ID=seq_len(40)
+
 ## generate three covariates x1, x2, and x3, with x2 binary
 x1<-rnorm(40)
 x2<-rbinom(40,1,0.5)
 x3<-rnorm(40)
-dataC<-cbind(x1,x2,x3)
+dataC<-data.frame(cbind(ID,x1,x2,x3))
 
 ## Coefficients for x1, x2, and x3 among 60 taxa.
 beta_1<-c(0.1,rep(0,59))
@@ -93,7 +95,7 @@ beta_3<-rnorm(60)
 beta_mat<-cbind(beta_1,beta_2,beta_3)
 
 ## Generate absolute abundance for 60 taxa in ecosystem.
-dataM_eco<-floor(exp(10+dataC \%*\% t(beta_mat) + rnorm(2400,sd=0.05)))
+dataM_eco<-floor(exp(10+as.matrix(dataC[,-1])\%*\%t(beta_mat) + rnorm(2400,sd=0.05)))
 
 ## Generate sequence depth and generate observed abundance
 Ci<-runif(40,0.01,0.05)
@@ -103,20 +105,25 @@ colnames(dataM)<-paste0("rawCount",1:60)
 ## Randomly introduce 0 to make 25\% sparsity level.
 dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
 
-## Add ID variable
-dataM<-data.frame(dataM,ID=seq_len(40))
-dataC<-data.frame(dataC,ID=seq_len(40))
-## dataM and dataC were generated as above. "ID" as the ID variable
-## Merge two dataset by id variable
+dataM<-data.frame(cbind(ID,dataM))
+
+## The following steps are to create a SummarizedExperiment object.
+## If you already have a SummarizedExperiment format data, you can
+## ignore the following steps and directly feed it to the IFAA function.
+
+## Merge two dataset by ID variable
 data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+
+## Seperate microbiome data and covariate data, drop ID variable from microbiome data
 dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)\%in\%c("ID")]]
 dataC_sub<-data_merged[,colnames(dataC)]
+
 ## Create SummarizedExperiment object
 test_dat<-SummarizedExperiment::SummarizedExperiment(
 assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 
-## If you already have a SummarizedExperiment format data, you can
-## ignore the above steps and directly feed it to the MZILN function.
+## Again, if you already have a SummarizedExperiment format data, you can
+## ignore the above steps and directly feed it to the IFAA function.
 
 ## Run MZILN function
 set.seed(123) # For full reproducibility

@@ -48,6 +48,11 @@ runScrParal <- function(data,
   nAlphaNoInt <- nPredics * nNorm
   nAlphaSelec <- nPredics * nTaxa
 
+  
+  if (nRef > (length(taxaNames))) {
+    nRef <- length(taxaNames)
+    }
+
   # make reference taxa list
   if (length(refTaxa) < nRef) {
     taxon_to_be_sample <-

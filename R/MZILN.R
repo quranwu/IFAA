@@ -1,10 +1,9 @@
 ##' Conditional regression for microbiome analysis based on multivariate zero-inflated logistic normal model
 ##'
 ##' @description
-##' For estimating and testing the associations of abundance ratios with covariates.
+##' The MZILN function is for estimating and testing the associations of abundance ratios with covariates.
 ##' \loadmathjax
 ##'
-##' Most of the time, users just need to feed the first three inputs to the function: `experiment_dat`, `refTaxa` and `allCov`. All other inputs can just take their default values.
 ##' The regression model for `MZILN()` can be expressed as follows:
 ##' \mjdeqn{\log\bigg(\frac{\mathcal{Y}_i^k}{\mathcal{Y}_i^{K+1}}\bigg)|\mathcal{Y}_i^k>0,\mathcal{Y}_i^{K+1}>0=\alpha^{0k}+\mathcal{X}_i^T\alpha^k+\epsilon_i^k,\hspace{0.2cm}k=1,...,K}{}
 ##' where
@@ -16,7 +15,8 @@
 ##'
 ##' High-dimensional \mjeqn{X_i}{} is handled by regularization.
 ##'
-##'
+##' When using this function, most of the time, users just need to feed the first three inputs to the function: `experiment_dat`, `refTaxa` and `allCov`. All other inputs can just take their default values.
+##' 
 ##' @param experiment_dat A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be
 ##' absolute abundance or relative abundance with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points.
 ##' The covariates data contains covariates and confounders with each row per sample and each column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into dummy variables.
@@ -24,7 +24,7 @@
 ##' @param allCov All covariates of interest (including confounders) for estimating and testing their associations with the targeted ratios. Default is 'NULL' meaning that all covariates in covData are of interest.
 ##' @param sampleIDname Name of the sample ID variable in the data. In the case that the data does not have an ID variable, this can be ignored. Default is NULL.
 ##' @param adjust_method The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.
-##' @param fdrRate The false discovery rate for identifying taxa/OTU/ASV associated with `allCov`. Default is `0.15`.
+##' @param fdrRate The false discovery rate for identifying taxa/OTU/ASV associated with `allCov`. Default is `0.05`.
 ##' @param paraJobs If `sequentialRun` is `FALSE`, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as `NULL`, it will automatically detect the cores to decide the number of parallel jobs. Default is `NULL`.
 ##' @param bootB Number of bootstrap samples for obtaining confidence interval of estimates for the high dimensional regression. The default is `500`.
 ##' @param taxDropThresh The threshold of number of non-zero sequencing reads for each taxon to be dropped from the analysis. The default is `0` which means taxon without any sequencing reads will be dropped from the analysis.
@@ -40,17 +40,18 @@
 ##' @examples
 ##'
 ##' library(IFAA)
-##' ## A Makeup example from Scratch. 60 taxon, 40 subjects, 3 covariates
-##'
-##' ## If you already have a SummarizedExperiment format data, you can
-##' ## ignore the following steps and directly feed it to the MZILN function.
+##' ## A makeup example data from Scratch. 60 taxon, 40 subjects, 3 covariates
 ##'
 ##' set.seed(1)
+##' 
+##' ## create an ID variable for the example data
+##' ID=seq_len(40)
+##' 
 ##' ## generate three covariates x1, x2, and x3, with x2 binary
 ##' x1<-rnorm(40)
 ##' x2<-rbinom(40,1,0.5)
 ##' x3<-rnorm(40)
-##' dataC<-cbind(x1,x2,x3)
+##' dataC<-data.frame(cbind(ID,x1,x2,x3))
 ##'
 ##' ## Coefficients for x1, x2, and x3 among 60 taxa.
 ##' beta_1<-c(0.1,rep(0,59))
@@ -59,7 +60,7 @@
 ##' beta_mat<-cbind(beta_1,beta_2,beta_3)
 ##'
 ##' ## Generate absolute abundance for 60 taxa in ecosystem.
-##' dataM_eco<-floor(exp(10+dataC %*% t(beta_mat) + rnorm(2400,sd=0.05)))
+##' dataM_eco<-floor(exp(10+as.matrix(dataC[,-1])%*%t(beta_mat) + rnorm(2400,sd=0.05)))
 ##'
 ##' ## Generate sequence depth and generate observed abundance
 ##' Ci<-runif(40,0.01,0.05)
@@ -69,20 +70,25 @@
 ##' ## Randomly introduce 0 to make 25% sparsity level.
 ##' dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
 ##'
-##' ## Add ID variable
-##' dataM<-data.frame(dataM,ID=seq_len(40))
-##' dataC<-data.frame(dataC,ID=seq_len(40))
-##' ## dataM and dataC were generated as above. "ID" as the ID variable
-##' ## Merge two dataset by id variable
+##' dataM<-data.frame(cbind(ID,dataM))
+##' 
+##' ## The following steps are to create a SummarizedExperiment object.
+##' ## If you already have a SummarizedExperiment format data, you can
+##' ## ignore the following steps and directly feed it to the IFAA function.
+##' 
+##' ## Merge two dataset by ID variable
 ##' data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+##' 
+##' ## Seperate microbiome data and covariate data, drop ID variable from microbiome data
 ##' dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)%in%c("ID")]]
 ##' dataC_sub<-data_merged[,colnames(dataC)]
+##' 
 ##' ## Create SummarizedExperiment object
 ##' test_dat<-SummarizedExperiment::SummarizedExperiment(
 ##' assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 ##'
-##' ## If you already have a SummarizedExperiment format data, you can
-##' ## ignore the above steps and directly feed it to the MZILN function.
+##' ## Again, if you already have a SummarizedExperiment format data, you can
+##' ## ignore the above steps and directly feed it to the IFAA function.
 ##'
 ##' ## Run MZILN function
 ##' set.seed(123) # For full reproducibility
@@ -110,12 +116,12 @@ MZILN <- function(experiment_dat,
                   allCov = NULL,
                   sampleIDname = NULL,
                   adjust_method = "BY",
-                  fdrRate = 0.15,
+                  fdrRate = 0.05,
                   paraJobs = NULL,
                   bootB = 500,
                   taxDropThresh = 0,
                   standardize = FALSE,
-                  sequentialRun = TRUE,
+                  sequentialRun = FALSE,
                   verbose = TRUE) {
   allFunc <- allUserFunc()
 

@@ -15,7 +15,7 @@ originDataScreen <- function(data,
                              adjust_method,
                              subsamp_cut = 3,
                              dfmax_div = 3,
-                             nlambda_num = 20) {
+                             nlambda_num = 10) {
   results <- list()
 
   # load data info
@@ -55,9 +55,7 @@ originDataScreen <- function(data,
   if (!sequentialRun) {
     message(
       paraJobs,
-      " parallel jobs are registered for analyzing ",
-      nRef,
-      " reference taxa in Phase 1"
+      " parallel jobs are registered for the analysis."
     )
   }
 
@@ -121,11 +119,14 @@ originDataScreen <- function(data,
       dfmax <-
         ceiling(min((nPredics + 1) * nNorm / dfmax_div, length(rowToKeep) /
           dfmax_div))
-
+      
+      pmax <- ceiling(min((nPredics + 1) * nNorm, length(rowToKeep)))
+      
       lasso.est <- glmnet::glmnet(
         x = x,
         y = as.vector(y),
         dfmax = dfmax,
+        pmax = pmax,
         family = "gaussian",
         intercept = TRUE,
         standardize = FALSE,

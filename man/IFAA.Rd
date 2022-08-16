@@ -15,7 +15,7 @@ IFAA(
   nRefMaxForEsti = 2,
   refTaxa = NULL,
   adjust_method = "BY",
-  fdrRate = 0.15,
+  fdrRate = 0.05,
   paraJobs = NULL,
   bootB = 500,
   standardize = FALSE,
@@ -51,7 +51,7 @@ column per variable. The covariates data has to be numeric or binary. Categorica
 
 \item{adjust_method}{The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.}
 
-\item{fdrRate}{The false discovery rate for identifying taxa/OTU/ASV associated with \code{testCov}. Default is \code{0.15}.}
+\item{fdrRate}{The false discovery rate for identifying taxa/OTU/ASV associated with \code{testCov}. Default is \code{0.05}.}
 
 \item{paraJobs}{If \code{sequentialRun} is \code{FALSE}, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as \code{NULL}, it will automatically detect the cores to decide the number of parallel jobs. Default is \code{NULL}.}
 
@@ -94,9 +94,8 @@ standard error estimates, lower bound and upper bound of the 95\% confidence int
 }
 }
 \description{
-Make inference on the association of microbiome with covariates
+The IFAA function is to make inference on the association of microbiome with covariates
 
-Most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{testCov} and \code{ctrlCov}. All other inputs can just take their default values.
 To model the association, the following equation is used:
 
 \loadmathjax
@@ -118,21 +117,24 @@ and 1 that denote the observed proportion.
 The IFAA method can successfully addressed this challenge. The \code{IFAA()} will estimate the parameter
 \mjeqn{\beta^k}{} and their 95\% confidence intervals. High-dimensional \mjeqn{X_i}{} is handled by
 regularization.
+
+When using this function, most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{testCov} and \code{ctrlCov}. All other inputs can just take their default values.
 }
 \examples{
 
 library(IFAA)
-## A Makeup example from Scratch. 60 taxon, 40 subjects, 3 covariates
-
-## If you already have a SummarizedExperiment format data, you can
-## ignore the following steps and directly feed it to the IFAA function.
+## A makeup example data from Scratch. 60 taxon, 40 subjects, 3 covariates
 
 set.seed(1)
+
+## create an ID variable for the example data
+ID=seq_len(40)
+
 ## generate three covariates x1, x2, and x3, with x2 binary
 x1<-rnorm(40)
 x2<-rbinom(40,1,0.5)
 x3<-rnorm(40)
-dataC<-cbind(x1,x2,x3)
+dataC<-data.frame(cbind(ID,x1,x2,x3))
 
 ## Coefficients for x1, x2, and x3 among 60 taxa.
 beta_1<-c(0.1,rep(0,59))
@@ -141,7 +143,7 @@ beta_3<-rnorm(60)
 beta_mat<-cbind(beta_1,beta_2,beta_3)
 
 ## Generate absolute abundance for 60 taxa in ecosystem.
-dataM_eco<-floor(exp(10+dataC \%*\% t(beta_mat) + rnorm(2400,sd=0.05)))
+dataM_eco<-floor(exp(10+as.matrix(dataC[,-1])\%*\%t(beta_mat) + rnorm(2400,sd=0.05)))
 
 ## Generate sequence depth and generate observed abundance
 Ci<-runif(40,0.01,0.05)
@@ -151,19 +153,24 @@ colnames(dataM)<-paste0("rawCount",1:60)
 ## Randomly introduce 0 to make 25\% sparsity level.
 dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
 
-## Add ID variable
-dataM<-data.frame(dataM,ID=seq_len(40))
-dataC<-data.frame(dataC,ID=seq_len(40))
-## dataM and dataC were generated as above. "ID" as the ID variable
-## Merge two dataset by id variable
+dataM<-data.frame(cbind(ID,dataM))
+
+## The following steps are to create a SummarizedExperiment object.
+## If you already have a SummarizedExperiment format data, you can
+## ignore the following steps and directly feed it to the IFAA function.
+
+## Merge two dataset by ID variable
 data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+
+## Seperate microbiome data and covariate data, drop ID variable from microbiome data
 dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)\%in\%c("ID")]]
 dataC_sub<-data_merged[,colnames(dataC)]
+
 ## Create SummarizedExperiment object
 test_dat<-SummarizedExperiment::SummarizedExperiment(
 assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 
-## If you already have a SummarizedExperiment format data, you can
+## Again, if you already have a SummarizedExperiment format data, you can
 ## ignore the above steps and directly feed it to the IFAA function.
 
 set.seed(123) # For full reproducibility
@@ -172,9 +179,7 @@ results <- IFAA(experiment_dat = test_dat,
                 testCov = c("x1", "x2"),
                 ctrlCov = c("x3"),
                 sampleIDname="ID",
-                fdrRate = 0.05,
-                nRef = 20,
-                paraJobs = 2)
+                fdrRate = 0.05)
 ## to extract all results:
 summary_res<-results$full_results
 ## to extract significant results:

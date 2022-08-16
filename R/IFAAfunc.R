@@ -1,9 +1,8 @@
 ##' Robust association identification and inference for absolute abundance in microbiome analyses
 ##'
 ##' @description
-##' Make inference on the association of microbiome with covariates
+##' The IFAA function is to make inference on the association of microbiome with covariates
 ##'
-##' Most of the time, users just need to feed the first three inputs to the function: `experiment_dat`, `testCov` and `ctrlCov`. All other inputs can just take their default values.
 ##' To model the association, the following equation is used:
 ##'
 ##' \loadmathjax
@@ -23,6 +22,8 @@
 ##' The IFAA method can successfully addressed this challenge. The `IFAA()` will estimate the parameter
 ##' \mjeqn{\beta^k}{} and their 95% confidence intervals. High-dimensional \mjeqn{X_i}{} is handled by
 ##' regularization.
+##' 
+##' When using this function, most of the time, users just need to feed the first three inputs to the function: `experiment_dat`, `testCov` and `ctrlCov`. All other inputs can just take their default values.
 ##'
 ##' @param experiment_dat A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance
 ##' with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each
@@ -36,7 +37,7 @@
 ##' @param nRefMaxForEsti The maximum number of final reference taxa used in phase 2. The default is `2`.
 ##' @param refTaxa A vector of taxa or OTU or ASV names. These are reference taxa specified by the user to be used in phase 1. If the number of reference taxa is less than 'nRef', the algorithm will randomly pick extra reference taxa to make up 'nRef'. The default is `NULL` since the algorithm will pick reference taxa randomly.
 ##' @param adjust_method The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.
-##' @param fdrRate The false discovery rate for identifying taxa/OTU/ASV associated with `testCov`. Default is `0.15`.
+##' @param fdrRate The false discovery rate for identifying taxa/OTU/ASV associated with `testCov`. Default is `0.05`.
 ##' @param paraJobs If `sequentialRun` is `FALSE`, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as `NULL`, it will automatically detect the cores to decide the number of parallel jobs. Default is `NULL`.
 ##' @param bootB Number of bootstrap samples for obtaining confidence interval of estimates in phase 2 for the high dimensional regression. The default is `500`.
 ##' @param standardize This takes a logical value `TRUE` or `FALSE`. If `TRUE`, the design matrix for X will be standardized in the analyses and the results. Default is `FALSE`.
@@ -69,17 +70,18 @@
 ##' @examples
 ##'
 ##' library(IFAA)
-##' ## A Makeup example from Scratch. 60 taxon, 40 subjects, 3 covariates
-##'
-##' ## If you already have a SummarizedExperiment format data, you can
-##' ## ignore the following steps and directly feed it to the IFAA function.
+##' ## A makeup example data from Scratch. 60 taxon, 40 subjects, 3 covariates
 ##'
 ##' set.seed(1)
+##' 
+##' ## create an ID variable for the example data
+##' ID=seq_len(40)
+##' 
 ##' ## generate three covariates x1, x2, and x3, with x2 binary
 ##' x1<-rnorm(40)
 ##' x2<-rbinom(40,1,0.5)
 ##' x3<-rnorm(40)
-##' dataC<-cbind(x1,x2,x3)
+##' dataC<-data.frame(cbind(ID,x1,x2,x3))
 ##'
 ##' ## Coefficients for x1, x2, and x3 among 60 taxa.
 ##' beta_1<-c(0.1,rep(0,59))
@@ -88,7 +90,7 @@
 ##' beta_mat<-cbind(beta_1,beta_2,beta_3)
 ##'
 ##' ## Generate absolute abundance for 60 taxa in ecosystem.
-##' dataM_eco<-floor(exp(10+dataC %*% t(beta_mat) + rnorm(2400,sd=0.05)))
+##' dataM_eco<-floor(exp(10+as.matrix(dataC[,-1])%*%t(beta_mat) + rnorm(2400,sd=0.05)))
 ##'
 ##' ## Generate sequence depth and generate observed abundance
 ##' Ci<-runif(40,0.01,0.05)
@@ -98,19 +100,24 @@
 ##' ## Randomly introduce 0 to make 25% sparsity level.
 ##' dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
 ##'
-##' ## Add ID variable
-##' dataM<-data.frame(dataM,ID=seq_len(40))
-##' dataC<-data.frame(dataC,ID=seq_len(40))
-##' ## dataM and dataC were generated as above. "ID" as the ID variable
-##' ## Merge two dataset by id variable
+##' dataM<-data.frame(cbind(ID,dataM))
+##' 
+##' ## The following steps are to create a SummarizedExperiment object.
+##' ## If you already have a SummarizedExperiment format data, you can
+##' ## ignore the following steps and directly feed it to the IFAA function.
+##' 
+##' ## Merge two dataset by ID variable
 ##' data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+##' 
+##' ## Seperate microbiome data and covariate data, drop ID variable from microbiome data
 ##' dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)%in%c("ID")]]
 ##' dataC_sub<-data_merged[,colnames(dataC)]
+##' 
 ##' ## Create SummarizedExperiment object
 ##' test_dat<-SummarizedExperiment::SummarizedExperiment(
 ##' assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 ##'
-##' ## If you already have a SummarizedExperiment format data, you can
+##' ## Again, if you already have a SummarizedExperiment format data, you can
 ##' ## ignore the above steps and directly feed it to the IFAA function.
 ##'
 ##' set.seed(123) # For full reproducibility
@@ -119,9 +126,7 @@
 ##'                 testCov = c("x1", "x2"),
 ##'                 ctrlCov = c("x3"),
 ##'                 sampleIDname="ID",
-##'                 fdrRate = 0.05,
-##'                 nRef = 20,
-##'                 paraJobs = 2)
+##'                 fdrRate = 0.05)
 ##' ## to extract all results:
 ##' summary_res<-results$full_results
 ##' ## to extract significant results:
@@ -132,14 +137,14 @@
 ##' @references Li et al.(2021) IFAA: Robust association identification and Inference For Absolute Abundance in microbiome analyses. Journal of the American Statistical Association. 116(536):1595-1608
 
 ##' @importFrom foreach foreach %dopar% registerDoSEQ
-##' @importFrom doRNG %dorng% 
+##' @importFrom doRNG %dorng%
 ##' @importFrom parallelly availableCores
 ##' @importFrom parallel makeCluster clusterExport stopCluster clusterSetRNGStream
 ##' @importFrom doParallel registerDoParallel
 ##' @importFrom Matrix Diagonal Matrix sparseVector
+##' @importFrom glmnet glmnet
 ##' @importFrom HDCI bootLOPR
 ##' @import mathjaxr
-##' @import glmnet glmnet
 ##' @import stats
 ##' @import utils
 ##' @importFrom SummarizedExperiment assays colData SummarizedExperiment
@@ -161,7 +166,7 @@ IFAA <- function(experiment_dat,
                  nRefMaxForEsti = 2,
                  refTaxa = NULL,
                  adjust_method = "BY",
-                 fdrRate = 0.15,
+                 fdrRate = 0.05,
                  paraJobs = NULL,
                  bootB = 500,
                  standardize = FALSE,
@@ -252,15 +257,6 @@ IFAA <- function(experiment_dat,
   if (nRefMaxForEsti < 2) {
     nRefMaxForEsti <- 2
     warning("Needs at least two final reference taxon for estimation.")
-  }
-
-
-  if (nRef > (length(microbName))) {
-    nRef <- length(microbName)
-    message(
-      "The number of reference taxa in Phase 1 is set to be equal to the total number
-           of taxa in the data because it cannot exceed that."
-    )
   }
 
   refTaxa_newNam <- newMicrobNames[microbName %in% refTaxa]

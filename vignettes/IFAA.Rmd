@@ -75,7 +75,7 @@ Most of the time, users just need to feed the first three inputs to the function
 - `nRefMaxForEsti`: The maximum number of final reference taxa used in phase 2. The default is `2`.
 - `refTaxa`: A vector of taxa names. These are reference taxa specified by the user to be used in phase 1 if the user believe these taxa are indepenent of the covariates. If the number of reference taxa is less than 'nRef', the algorithm will randomly pick extra reference taxa to make up 'nRef'. The default is `NULL` since the algorithm will pick reference taxa randomly. 
 - `adjust_method`: The adjusting method used for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.
-- `fdrRate`: The false discovery rate for identifying taxa/OTU/ASV associated with `testCov`. Default is `0.15`.
+- `fdrRate`: The false discovery rate for identifying taxa/OTU/ASV associated with `testCov`. Default is `0.05`.
 - `paraJobs`: If `sequentialRun` is `FALSE`, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as `NULL`, it will automatically detect the cores to decide the number of parallel jobs. Default is `NULL`. 
 - `bootB`: Number of bootstrap samples for obtaining confidence interval of estimates in phase 2 for the high dimensional regression. The default is `500`.
 - `standardize`: This takes a logical value `TRUE` or `FALSE`. If `TRUE`, the design matrix for X will be standardized in the analyses and the results. Default is `FALSE`.
@@ -105,18 +105,21 @@ Most of the time, users just need to feed the first three inputs to the function
 
 ## Example
 
-The example generates data from scratch, with 60 taxon, 40 subjects, and 3 covariates. 
+The example generates an example data from scratch, with 60 taxon, 40 subjects, and 3 covariates. 
 
-If you already have a SummarizedExperiment format data, you can ignore the data processing steps below.
 ```{r}
 library(IFAA)
+
 set.seed(1)
+
+## create an ID variable for the example data
+ID=seq_len(40)
+
 ## generate three covariates x1, x2, and x3, with x2 binary
 x1<-rnorm(40)
 x2<-rbinom(40,1,0.5)
 x3<-rnorm(40)
-dataC<-cbind(x1,x2,x3)
-
+dataC<-data.frame(cbind(ID,x1,x2,x3))
 
 ## Coefficients for x1, x2, and x3 among 60 taxa.
 beta_1<-c(0.1,rep(0,59))
@@ -125,7 +128,7 @@ beta_3<-rnorm(60)
 beta_mat<-cbind(beta_1,beta_2,beta_3)
 
 ## Generate absolute abundance for 60 taxa in ecosystem.
-dataM_eco<-floor(exp(10+dataC %*% t(beta_mat) + rnorm(2400,sd=0.05)))
+dataM_eco<-floor(exp(10+as.matrix(dataC[,-1]) %*% t(beta_mat) + rnorm(2400,sd=0.05)))
 
 ## Generate sequence depth and generate observed abundance
 Ci<-runif(40,0.01,0.05)
@@ -135,26 +138,28 @@ colnames(dataM)<-paste0("rawCount",1:60)
 ## Randomly introduce 0 to make 25% sparsity level.
 dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
 
-## Add ID variable
-dataM<-data.frame(dataM,ID=seq_len(40))
-dataC<-data.frame(dataC,ID=seq_len(40))
+dataM<-data.frame(cbind(ID,dataM))
 
-## dataM and dataC were generated as above. "ID" as the ID variable
+## The following steps are to create a SummarizedExperiment object.
+## If you already have a SummarizedExperiment format data, you can
+## ignore the following steps and directly feed it to the IFAA function.
 
-## Merge two dataset by id variable
+## Merge two dataset by ID variable
 data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+
+## Seperate microbiome data and covariate data, drop ID variable from microbiome data
 dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)%in%c("ID")]]
 dataC_sub<-data_merged[,colnames(dataC)]
-```
 
-Here we generate such that rawCount1 is associated with x1, rawCount2 is associated with x2, and the sparsity level is 25%. 
+## Create SummarizedExperiment object
+test_dat<-SummarizedExperiment::SummarizedExperiment(
+assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 
-```{r}
 ## Create a SummarizedExperiment object 
 test_dat<-SummarizedExperiment::SummarizedExperiment(assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 ```
 
-If you already have a SummarizedExperiment format data, you can ignore the above steps. Next we analyze the data to test the association between microbiome and the variable `"x1", "x2"` while adjusting for the variables (potential confounders) `"x3"`.
+If you already have a SummarizedExperiment format data, you can ignore the above steps for creating a SummarizedExperiment object. In the generated data, rawCount1 is associated with x1, rawCount2 is associated with x2, and the sparsity level is 25%. Next we analyze the data to test the association between microbiome and the variable `"x1", "x2"` while adjusting for the variables (potential confounders) `"x3"`.
 
 ```{r, eval=T}
 set.seed(123) # For full reproducibility
@@ -162,9 +167,7 @@ results <- IFAA(experiment_dat = test_dat,
                 testCov = c("x1","x2"),
                 ctrlCov = c("x3"),
                 sampleIDname="ID",
-                fdrRate = 0.1,
-                nRef = 20,
-                paraJobs = 2)
+                fdrRate = 0.05)
 ```
 
 
@@ -174,11 +177,11 @@ summary_res<-results$full_result
 sig_results<-subset(summary_res,sig_ind==TRUE)
 sig_results
 ```
-The results found `"rawCount1"` associated with `"x1"`, and `"rawCount2"` associated with `"x2"`, while adjusting for `"x3"`. The regression coefficients and their 95% confidence intervals are provided. These coefficients correspond to $\beta^k$ in the model equation. 
+After adjusting for multiple testing, the results found `"rawCount1"` associated with `"x1"`, and `"rawCount2"` associated with `"x2"`, while adjusting for `"x3"`. The regression coefficients and their 95% confidence intervals are provided. These coefficients correspond to $\beta^k$ in the model equation. 
 
-The interpretation is that 
+The interpretation is: 
 
-- Every unit increase in `"x1"` is associated with approximately 13.5% increase in the absolute abundance of `"rawCount1"`, every unit increase in `"x2"` is associated with approximately 19.1% increase in the absolute abundance of `"rawCount2"`, in the entire gut ecosystem. 
+- Every unit increase in `"x1"` is associated with approximately 12.8% increase in the absolute abundance of `"rawCount1"` in the entire ecosystem of interest (while controlling for `"x3"`); Every unit increase in `"x2"` is associated with approximately 19.9% increase in the absolute abundance of `"rawCount2"` in the entire ecosystem of interest (while controlling for `"x3"`), . 
 
 
 ## Reference
@@ -213,7 +216,7 @@ Most of the time, users just feed the first three inputs to the function: `exper
 - `sampleIDname`: Name of the sample ID variable in the data. In the case that the data does not have an ID variable, this can be ignored. Default is NULL. 
 
 - `adjust_method`: The adjusting method for p value adjustment. Default is "BY" for dependent FDR adjustment. It can take any adjustment method for p.adjust function in R.
-- `fdrRate` The false discovery rate for identifying ratios associated with `allCov`. Default is `0.15`.
+- `fdrRate` The false discovery rate for identifying ratios associated with `allCov`. Default is `0.05`.
 - `paraJobs`: If `sequentialRun` is `FALSE`, this specifies the number of parallel jobs that will be registered to run the algorithm. If specified as `NULL`, it will automatically detect the cores to decide the number of parallel jobs. Default is `NULL`. 
 - `bootB`: Number of bootstrap samples for obtaining confidence interval of estimates for the high dimensional regression. The default is `500`.
 - `taxDropThresh`: The threshold of number of non-zero sequencing reads for each taxon to be dropped from the analysis. The default is `0` which means taxon without any sequencing reads will be dropped from the analysis.
@@ -256,11 +259,11 @@ summary_res[summary_res$taxon=="rawCount18",,drop=FALSE]
 ```
 The regression coefficients and their 95% confidence intervals are provided. These coefficients correspond to $\alpha^k$ in the model equation, and can be interpreted as the associations between the covariates and log-ratio of `"rawCount18"` over `"rawCount34"`. 
 
-The interpretation for the results is that 
+The results show that the log-ratio is associated with `"x1"` and `"x3"` before adjusting for multiple testing. The interpretation is:
 
-- Every unit increase in `"x1"` is associated with approximately 2.77% increase in the abundance ratio of `"rawCount18"` over `"rawCount34"`  (while controlling for `"x2"` and `"x3"`); Every unit increase in `"x2"` is associated with approximately 2.44% increase in the abundance ratio of `"rawCount18"` over `"rawCount34"` (while controlling for `"x1"` and `"x3"`); Every unit increase in `"x3"` is associated with approximately 252.22% (=exp(1.259)-1) increase in the abundance ratio of `"rawCount18"` over `"rawCount34"` (while controlling for `"x1"` and `"x2"`).
+- Every unit increase in `"x1"` is associated with approximately 2.74% increase in the abundance ratio of `"rawCount18"` over `"rawCount34"`  (while controlling for `"x2"` and `"x3"`), but this is not significant after adjusting for multiple testing; Every unit increase in `"x3"` is associated with approximately 252.22% (=exp(1.259)-1) increase in the abundance ratio of `"rawCount18"` over `"rawCount34"` (while controlling for `"x1"` and `"x2"`), and this association remains significant after adjusting for multiple testing.
 
-If interested in significant taxon, they could be extracted by `subset(summary_res,sig_ind==TRUE)`. 
+To extract the significant associations for all ratios with `"rawCount34"` being the denominator, one can do: `subset(summary_res,sig_ind==TRUE)`. 
 
 ## Reference
 

@@ -60,8 +60,8 @@ getScrResu <- function(data,
   }
 
   if (nTestCov > 1) {
-    results$selecCountMatIndv <- as.csc.matrix(selecCountMatIndv)
-    results$selecEstMatIndv <- as.csc.matrix(selecEstMatIndv)
+    results$selecCountMatIndv <- selecCountMatIndv
+    results$selecEstMatIndv <- selecEstMatIndv
 
     rm(selecCountMatIndv)
   }

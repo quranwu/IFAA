@@ -73,9 +73,7 @@ originDataScreen_imputed <- function(data,
   if (!sequentialRun) {
     message(
       paraJobs,
-      " parallel jobs are registered for analyzing ",
-      nRef,
-      " reference taxa in Phase 1"
+      " parallel jobs are registered for the analysis."
     )
   }
 

@@ -1,6 +1,6 @@
 Package: IFAA
 Title: Robust Inference for Absolute Abundance in Microbiome Analysis
-Version: 0.99.6
+Version: 0.99.7
 Authors@R: c(person(given = "Quran",
            family = "Wu",
            role = c("aut"),
@@ -18,16 +18,15 @@ URL: https://pubmed.ncbi.nlm.nih.gov/35241863/,
         https://github.com/quranwu/IFAA
 BugReports: https://github.com/quranwu/IFAA/issues
 LazyData: FALSE
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
 Depends: R (>= 4.2.0),
-Imports: qlcMatrix (>= 0.9.7), methods (>= 3.3.0), mathjaxr (>= 1.0-1),
-        foreach (>= 1.4.3), Matrix (>= 1.4-0), HDCI (>= 1.0-2),
+Imports: mathjaxr, doRNG, foreach (>= 1.4.3), Matrix (>= 1.4-0), HDCI (>= 1.0-2),
         parallel (>= 3.3.0), doParallel (>= 1.0.11), parallelly ,
         glmnet, stats, utils, SummarizedExperiment, stringr, S4Vectors,
-        DescTools, MatrixExtra, speedglm
+        DescTools, MatrixExtra
 biocViews: Software, Technology, Sequencing, Microbiome, Regression
 RdMacros: mathjaxr
-Suggests: knitr, rmarkdown
+Suggests: knitr, rmarkdown, RUnit, BiocGenerics
 VignetteBuilder: knitr
 NeedsCompilation: no
 Packaged: 2022-07-07 20:28:02 UTC;quranwu

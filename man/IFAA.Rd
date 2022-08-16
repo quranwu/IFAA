@@ -25,14 +25,13 @@ IFAA(
   SDThresh = 0.05,
   SDquantilThresh = 0,
   balanceCut = 0.2,
-  verbose = TRUE,
-  seed = 1
+  verbose = TRUE
 )
 }
 \arguments{
-\item{experiment_dat}{A SummarizedExperiment object containing microbiome data and covarites (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance
-with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covarites data contains covariates and confounders with each row per sample and each
-column per variable. The covarites data has to be numeric or binary.}
+\item{experiment_dat}{A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance
+with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each
+column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into dummy variables.}
 
 \item{testCov}{Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is \code{NULL} which means all covariates are \code{testCov}.}
 
@@ -73,8 +72,6 @@ column per variable. The covarites data has to be numeric or binary.}
 \item{balanceCut}{The threshold of the proportion of non-zero sequencing reads in each group of a binary variable for choosing the final reference taxa in phase 2. The default number is \code{0.2} which means at least 20\% non-zero sequencing reads in each group are needed to be eligible for being chosen as a final reference taxon.}
 
 \item{verbose}{Whether the process message is printed out to the console. The default is TRUE.}
-
-\item{seed}{Random seed for reproducibility. Default is \code{1}. It can be set to be NULL to remove seeding.}
 }
 \value{
 A list containing 2 elements
@@ -90,7 +87,6 @@ standard error estimates, lower bound and upper bound of the 95\% confidence int
 \item {\code{ref_taxon_count}: The counts of selection for the associations of all taxa with test covariates in Phase 1.}
 \item {\code{totalTimeMins}: The average magnitude estimates for the associations of all taxa with test covariates in Phase 1.}
 \item {\code{ref_taxon_est}: Total time used for the entire analysis.}
-\item {\code{seed}: The seed used for the analysis for reproducibility.}
 \item {\code{fdrRate}: FDR rate used for the analysis.}
 \item {\code{adjust_method}: Multiple testing adjust method used for the analysis.}
 }
@@ -99,8 +95,7 @@ standard error estimates, lower bound and upper bound of the 95\% confidence int
 }
 \description{
 Make inference on the association of microbiome with covariates
-}
-\details{
+
 Most of the time, users just need to feed the first three inputs to the function: \code{experiment_dat}, \code{testCov} and \code{ctrlCov}. All other inputs can just take their default values.
 To model the association, the following equation is used:
 
@@ -126,46 +121,60 @@ regularization.
 }
 \examples{
 
-library(SummarizedExperiment)
+library(IFAA)
+## A Makeup example from Scratch. 60 taxon, 40 subjects, 3 covariates
 
-## If you already have a SummarizedExperiment format data, you can ignore 
-#  the data processing steps below.
+## If you already have a SummarizedExperiment format data, you can
+## ignore the following steps and directly feed it to the IFAA function.
 
-## load the example microbiome data. This could be relative abundance or absolute 
-## abundance data. If you have a csv or tsv file for the microbiome data, you 
-## can use read.csv() function or read.table() function in R to read the 
-## data file into R.
-data(dataM)
-dim(dataM)
-dataM[1:5, 1:8]
+set.seed(1)
+## generate three covariates x1, x2, and x3, with x2 binary
+x1<-rnorm(40)
+x2<-rbinom(40,1,0.5)
+x3<-rnorm(40)
+dataC<-cbind(x1,x2,x3)
 
-## load the example covariates data. If you have a csv or tsv file for the 
-## covariates data, you can use read.csv() function or read.table() function 
-## in R to read the data file into R.
-data(dataC)
-dim(dataC)
-dataC[1:5, ]
+## Coefficients for x1, x2, and x3 among 60 taxa.
+beta_1<-c(0.1,rep(0,59))
+beta_2<-c(0,0.2,rep(0,58))
+beta_3<-rnorm(60)
+beta_mat<-cbind(beta_1,beta_2,beta_3)
 
-## Merge microbiome data and covariate data by id, to avoid unmatching observations. 
-data_merged<-merge(dataM,dataC,by="id",all=FALSE)
+## Generate absolute abundance for 60 taxa in ecosystem.
+dataM_eco<-floor(exp(10+dataC \%*\% t(beta_mat) + rnorm(2400,sd=0.05)))
 
-## Seperate microbiome data and covariate data, drop id variable from microbiome data
-dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)\%in\%c("id")]]
+## Generate sequence depth and generate observed abundance
+Ci<-runif(40,0.01,0.05)
+dataM<-floor(apply(dataM_eco,2,function(x) x*Ci))
+colnames(dataM)<-paste0("rawCount",1:60)
+
+## Randomly introduce 0 to make 25\% sparsity level.
+dataM[sample(seq_len(length(dataM)),length(dataM)/4)]<-0
+
+## Add ID variable
+dataM<-data.frame(dataM,ID=seq_len(40))
+dataC<-data.frame(dataC,ID=seq_len(40))
+## dataM and dataC were generated as above. "ID" as the ID variable
+## Merge two dataset by id variable
+data_merged<-merge(dataM,dataC,by="ID",all=FALSE)
+dataM_sub<-data_merged[,colnames(dataM)[!colnames(dataM)\%in\%c("ID")]]
 dataC_sub<-data_merged[,colnames(dataC)]
+## Create SummarizedExperiment object
+test_dat<-SummarizedExperiment::SummarizedExperiment(
+assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
 
-## Create SummarizedExperiment object 
-test_dat<-SummarizedExperiment(assays=list(MicrobData=t(dataM_sub)), colData=dataC_sub)
+## If you already have a SummarizedExperiment format data, you can
+## ignore the above steps and directly feed it to the IFAA function.
 
-## If you already have a SummarizedExperiment format data, you can 
-## ignore the above steps.
+set.seed(123) # For full reproducibility
 
-## run IFAA function
 results <- IFAA(experiment_dat = test_dat,
-                testCov = c("v1", "v2"),
-                ctrlCov = c("v3"),
-                sampleIDname = c("id"),
-                fdrRate = 0.05)
-
+                testCov = c("x1", "x2"),
+                ctrlCov = c("x3"),
+                sampleIDname="ID",
+                fdrRate = 0.05,
+                nRef = 20,
+                paraJobs = 2)
 ## to extract all results:
 summary_res<-results$full_results
 ## to extract significant results:

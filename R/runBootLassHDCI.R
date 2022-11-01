@@ -19,7 +19,7 @@ runBootLassoHDCI <- function(x,
   }
 
   beta.LPR <- rep(0, nBeta)
-  betaCI.LPR <- matrix(0.2, nrow = 2, ncol = nBeta)
+  betaCI.LPR <- matrix(0, nrow = 2, ncol = nBeta)
 
   bootResu <- HDCI::bootLOPR(
     x = as.matrix(x),

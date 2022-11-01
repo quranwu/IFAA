@@ -269,15 +269,12 @@ metaData <- function(MicrobData,
   results$xNames <- colnames(Covariates)
   if (standardize) {
     if (length(binaryInd) > 0) {
-      Covariates[, -binaryInd] <- Covariates[, -binaryInd] %*%
-        diag(1 / apply(Covariates[, -binaryInd], 2, function(x) {
-          sd(x, na.rm = TRUE)
-        }))
+      Covariates[,-binaryInd] <-
+        scale(Covariates[,-binaryInd, drop = FALSE], center = FALSE,
+              scale = apply(Covariates[,-binaryInd, drop = FALSE], 2, sd, na.rm = TRUE))
     } else {
-      Covariates <- Covariates %*%
-        diag(1 / apply(Covariates, 2, function(x) {
-          sd(x, na.rm = TRUE)
-        }))
+      Covariates <-
+        scale(Covariates, center = FALSE, scale = apply(Covariates, 2, sd, na.rm = TRUE))
     }
   }
 

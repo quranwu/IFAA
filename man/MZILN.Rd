@@ -25,7 +25,7 @@ MZILN(
 absolute abundance or relative abundance with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points.
 The covariates data contains covariates and confounders with each row per sample and each column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into dummy variables.}
 
-\item{microbVar}{This takes a vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest for the numerator of the ratios. Default is "all" meaning all microbiome variables (except denominator) will be analyzed as numerators. If a subset of microbiome variables is specified, the output will only contain the specified ratios, and p-value adjustment for multiple testing will only be applied to the subset.}
+\item{microbVar}{This takes a single or vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest for the numerator of the ratios. Default is "all" meaning all microbiome variables (except denominator) will be analyzed as numerators. If a subset of microbiome variables is specified, the output will only contain the specified ratios, and p-value adjustment for multiple testing will only be applied to the subset.}
 
 \item{refTaxa}{Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names.}
 

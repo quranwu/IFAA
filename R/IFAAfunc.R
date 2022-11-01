@@ -28,7 +28,7 @@
 ##' @param experiment_dat A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance
 ##' with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each
 ##' column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into dummy variables.
-##' @param microbVar This takes a vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset. 
+##' @param microbVar This takes a single or vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset. 
 ##' @param testCov Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is `NULL` which means all covariates are `testCov`.
 ##' @param ctrlCov Potential confounders that will be adjusted in the model. It corresponds to $W_i$ in the equation. Default is `NULL` which means all covariates except those in `testCov` are adjusted as confounders.
 ##' @param sampleIDname Name of the sample ID variable in the data. In the case that the data does not have an ID variable, this can be ignored. Default is NULL.
@@ -137,16 +137,16 @@
 ##' 
 ##' ## If only interested in certain taxa, say "rawCount1", "rawCount2", 
 ##' ## and "rawCount3", one can do: 
-##' ## results <- IFAA(
-##' ##   experiment_dat = test_dat,
-##' ##   microbVar = c("rawCount1", "rawCount2", "rawCount3"),
-##' ##   testCov = c("x1", "x2"),
-##' ##   ctrlCov = c("x3"),
-##' ##   sampleIDname = "ID",
-##' ##   fdrRate = 0.05,
-##' ##   nRef = 2,
-##' ##   paraJobs = 2
-##' ## )
+##' results <- IFAA(
+##' experiment_dat = test_dat,
+##' microbVar = c("rawCount1", "rawCount2", "rawCount3"),
+##' testCov = c("x1", "x2"),
+##' ctrlCov = c("x3"),
+##' sampleIDname = "ID",
+##' fdrRate = 0.05,
+##' nRef = 2,
+##' paraJobs = 2
+##' )
 
 ##'
 ##'

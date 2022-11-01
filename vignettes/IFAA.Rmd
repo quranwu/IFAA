@@ -62,7 +62,7 @@ Most of the time, users just need to feed these three inputs to the function: `e
 
 - `experiment_dat`: A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into binary dummy variables.
 
-- `microbVar`: This takes a vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset.
+- `microbVar`: This takes a single or vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset.
 
 - `testCov`: Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is `NULL` which means all covariates are `testCov`.
 
@@ -233,7 +233,7 @@ Most of the time, users just feed the first four inputs to the function: `experi
 
 - `experiment_dat`: A SummarizedExperiment object containing microbiome data and covariates (see example on how to create a SummarizedExperiment object). The microbiome data can be absolute abundance or relative abundance with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into binary dummy variables.
 
-- `microbVar`: This takes a vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest for the numerator of the ratios. Default is "all" meaning all microbiome variables (except denominator) will be analyzed as numerators. If a subset of microbiome variables is specified, the output will only contain the specified ratios, and p-value adjustment for multiple testing will only be applied to the subset. 
+- `microbVar`: This takes a single or vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest for the numerator of the ratios. Default is "all" meaning all microbiome variables (except denominator) will be analyzed as numerators. If a subset of microbiome variables is specified, the output will only contain the specified ratios, and p-value adjustment for multiple testing will only be applied to the subset. 
 
 - `refTaxa`: Denominator taxa names specified by the user for the targeted ratios. This could be a vector of names. 
 
@@ -317,7 +317,9 @@ The interpretation of the association estimates remain the same. Notice that the
 
 The results for the ratio "rawCount8/rawCount10" can be extracted similarly.
 
-To extract all significant ratios with `"rawCount10"` being the denominator, one can do: `subset(summary_res_ratio,sig_ind==TRUE)`. 
+To extract all significant ratios with `"rawCount10"` being the denominator, 
+
+one can do: `subset(summary_res_ratio,sig_ind==TRUE)`. 
 
 
 

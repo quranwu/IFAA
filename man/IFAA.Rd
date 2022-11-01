@@ -34,7 +34,7 @@ IFAA(
 with each column per sample and each row per taxon/OTU/ASV (or any other unit). No imputation is needed for zero-valued data points. The covariates data contains covariates and confounders with each row per sample and each
 column per variable. The covariates data has to be numeric or binary. Categorical variables should be converted into dummy variables.}
 
-\item{microbVar}{This takes a vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset.}
+\item{microbVar}{This takes a single or vector of microbiome variable names (e.g., taxa, OTU and ASV names) of interest. Default is "all" meaning all microbiome variables will be analyzed. If a subset of microbiome variables is specified, the output will only contain the specified variables, and p-value adjustment for multiple testing will only be applied to the subset.}
 
 \item{testCov}{Covariates that are of primary interest for testing and estimating the associations. It corresponds to $X_i$ in the equation. Default is \code{NULL} which means all covariates are \code{testCov}.}
 
@@ -192,16 +192,16 @@ sig_results=subset(summary_res,sig_ind==TRUE)
 
 ## If only interested in certain taxa, say "rawCount1", "rawCount2", 
 ## and "rawCount3", one can do: 
-## results <- IFAA(
-##   experiment_dat = test_dat,
-##   microbVar = c("rawCount1", "rawCount2", "rawCount3"),
-##   testCov = c("x1", "x2"),
-##   ctrlCov = c("x3"),
-##   sampleIDname = "ID",
-##   fdrRate = 0.05,
-##   nRef = 2,
-##   paraJobs = 2
-## )
+results <- IFAA(
+experiment_dat = test_dat,
+microbVar = c("rawCount1", "rawCount2", "rawCount3"),
+testCov = c("x1", "x2"),
+ctrlCov = c("x3"),
+sampleIDname = "ID",
+fdrRate = 0.05,
+nRef = 2,
+paraJobs = 2
+)
 
 
 
